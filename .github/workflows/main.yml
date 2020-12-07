@@ -11,80 +11,74 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: cargo-cache
-        uses: actions/cache@v2.1.3
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v1.0.1
+      - uses: actions-rs/toolchain@v1
         with:
-          path: ~/.cargo
-          key: ${{ runner.OS }}-cargo-cache
-          restore-keys: |
-            ${{ runner.OS }}-cargo-cache
+          toolchain: stable
       - name: rust-cargo
         uses: actions-rs/cargo@v1.0.1
         with:
           command: install
-          args: --force pyoxidizer
+          args: pyoxidizer
       - name: Build Hydrus
         run: |
           cd $GITHUB_WORKSPACE
           basename $(rustc --print sysroot) | sed -e "s/^stable-//" > triple.txt
           pyoxidizer build --release
           cd build/$(head -n 1 triple.txt)/release/install
-          tar -czvf hydrus-${{ runner.OS }}.tgz *
+          tar -czf hydrus-linux.tgz *
           mv *.tgz $GITHUB_WORKSPACE
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v2.2.1
         with:
           name: hydrus-linux-tarball
-          path: $GITHUB_WORKSPACE/hydrus-${{ runner.OS }}.tgz
+          path: hydrus-linux.tgz
           if-no-files-found: error
   
   build-macos:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
-      - name: cargo-cache
-        uses: actions/cache@v2.1.3
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v1.0.1
+      - uses: actions-rs/toolchain@v1
         with:
-          path: ~/.cargo
-          key: ${{ runner.OS }}-cargo-cache
-          restore-keys: |
-            ${{ runner.OS }}-cargo-cache
+          toolchain: stable
       - name: rust-cargo
         uses: actions-rs/cargo@v1.0.1
         with:
           command: install
-          args: --force pyoxidizer
+          args: pyoxidizer
       - name: Build Hydrus
         run: |
           cd $GITHUB_WORKSPACE
           basename $(rustc --print sysroot) | sed -e "s/^stable-//" > triple.txt
           pyoxidizer build --release
           cd build/$(head -n 1 triple.txt)/release/install
-          tar -czvf hydrus-${{ runner.OS }}.tgz *
+          tar -czf hydrus-macos.tgz *
           mv *.tgz $GITHUB_WORKSPACE
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v2.2.1
         with:
           name: hydrus-linux-tarball
-          path: $GITHUB_WORKSPACE/hydrus-${{ runner.OS }}.tgz
+          path: hydrus-macos.tgz
           if-no-files-found: error
 
   build-windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v2
-      - name: cargo-cache
-        uses: actions/cache@v2.1.3
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v1.0.1
+      - uses: actions-rs/toolchain@v1
         with:
-          path: ~/.cargo
-          key: ${{ runner.OS }}-cargo-cache
-          restore-keys: |
-            ${{ runner.OS }}-cargo-cache
+          toolchain: stable
       - name: rust-cargo
         uses: actions-rs/cargo@v1.0.1
         with:
           command: install
-          args: --force pyoxidizer
+          args: pyoxidizer
       - name: Build Hydrus
         run: |
           cd $GITHUB_WORKSPACE
