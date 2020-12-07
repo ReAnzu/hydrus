@@ -27,7 +27,7 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE
           basename $(rustc --print sysroot) | sed -e "s/^stable-//" > triple.txt
-          pyoxidizer build --release | tee build.log
+          pyoxidizer build --release
           cd build/$(head -n 1 triple.txt)/release/install
           tar -czvf hydrus-${{ runner.OS }}.tgz *
           mv *.tgz $GITHUB_WORKSPACE
@@ -58,7 +58,7 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE
           basename $(rustc --print sysroot) | sed -e "s/^stable-//" > triple.txt
-          pyoxidizer build --release | tee build.log
+          pyoxidizer build --release
           cd build/$(head -n 1 triple.txt)/release/install
           tar -czvf hydrus-${{ runner.OS }}.tgz *
           mv *.tgz $GITHUB_WORKSPACE
