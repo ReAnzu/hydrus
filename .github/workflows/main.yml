@@ -11,6 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - name: cargo-cache
+        uses: actions/cache@v2.1.3
+        with:
+          path: ~/.cargo
+          key: ${{ runnner.OS }}-cargo-cache
+          restore-keys: |
+            ${{ runnner.OS }}-cargo-cache
       - name: rust-cargo
         uses: actions-rs/cargo@v1.0.1
         with:
@@ -19,12 +26,19 @@ jobs:
       - name: Build Hydrus
         run: |
           cd $GITHUB_WORKSPACE
-          pyoxidizer build --release.
+          pyoxidizer build --release
   
   build-macos:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
+      - name: cargo-cache
+        uses: actions/cache@v2.1.3
+        with:
+          path: ~/.cargo
+          key: ${{ runnner.OS }}-cargo-cache
+          restore-keys: |
+            ${{ runnner.OS }}-cargo-cache
       - name: rust-cargo
         uses: actions-rs/cargo@v1.0.1
         with:
@@ -33,12 +47,19 @@ jobs:
       - name: Build Hydrus
         run: |
           cd $GITHUB_WORKSPACE
-          pyoxidizer build --release.
+          pyoxidizer build --release
 
   build-windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v2
+      - name: cargo-cache
+        uses: actions/cache@v2.1.3
+        with:
+          path: ~/.cargo
+          key: ${{ runnner.OS }}-cargo-cache
+          restore-keys: |
+            ${{ runnner.OS }}-cargo-cache
       - name: rust-cargo
         uses: actions-rs/cargo@v1.0.1
         with:
@@ -47,4 +68,4 @@ jobs:
       - name: Build Hydrus
         run: |
           cd $GITHUB_WORKSPACE
-          pyoxidizer build --release.
+          pyoxidizer build --release
