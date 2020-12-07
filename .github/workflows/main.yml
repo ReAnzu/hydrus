@@ -1,0 +1,50 @@
+name: CI
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: rust-cargo
+        uses: actions-rs/cargo@v1.0.1
+        with:
+          command: install
+          args: pyoxidize
+      - name: Build Hydrus
+        run: |
+          cd $GITHUB_WORKSPACE
+          pyoxidize build --release.
+  
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: rust-cargo
+        uses: actions-rs/cargo@v1.0.1
+        with:
+          command: install
+          args: pyoxidize
+      - name: Build Hydrus
+        run: |
+          cd $GITHUB_WORKSPACE
+          pyoxidize build --release.
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: rust-cargo
+        uses: actions-rs/cargo@v1.0.1
+        with:
+          command: install
+          args: pyoxidize
+      - name: Build Hydrus
+        run: |
+          cd $GITHUB_WORKSPACE
+          pyoxidize build --release.
