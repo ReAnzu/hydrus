@@ -26,8 +26,9 @@ jobs:
       - name: Build Hydrus
         run: |
           cd $GITHUB_WORKSPACE
+          echo ${$(basename $(rustc --print sysroot))#stable-} > triple.txt
           pyoxidizer build --release | tee build.log
-          cd build/$(head -n build.log)/release/install
+          cd build/$(head -n 1 triple.txt)/release/install
           tar -czvf hydrus-${{ runner.OS }}.tgz *
           mv *.tgz $GITHUB_WORKSPACE
       - name: Upload a Build Artifact
@@ -56,8 +57,9 @@ jobs:
       - name: Build Hydrus
         run: |
           cd $GITHUB_WORKSPACE
+          echo ${$(basename $(rustc --print sysroot))#stable-} > triple.txt
           pyoxidizer build --release | tee build.log
-          cd build/$(head -n build.log)/release/install
+          cd build/$(head -n 1 triple.txt)/release/install
           tar -czvf hydrus-${{ runner.OS }}.tgz *
           mv *.tgz $GITHUB_WORKSPACE
       - name: Upload a Build Artifact
