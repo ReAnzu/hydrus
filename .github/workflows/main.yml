@@ -19,7 +19,7 @@ jobs:
       - name: Build Hydrus
         run: |
           cd $GITHUB_WORKSPACE
-          pyoxidize build --release.
+          pyoxidizer build --release.
   
   build-macos:
     runs-on: macos-latest
@@ -33,7 +33,7 @@ jobs:
       - name: Build Hydrus
         run: |
           cd $GITHUB_WORKSPACE
-          pyoxidize build --release.
+          pyoxidizer build --release.
 
   build-windows:
     runs-on: windows-latest
@@ -47,4 +47,4 @@ jobs:
       - name: Build Hydrus
         run: |
           cd $GITHUB_WORKSPACE
-          pyoxidize build --release.
+          pyoxidizer build --release.
