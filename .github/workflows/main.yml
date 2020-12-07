@@ -26,7 +26,16 @@ jobs:
       - name: Build Hydrus
         run: |
           cd $GITHUB_WORKSPACE
-          pyoxidizer build --release
+          pyoxidizer build --release | tee build.log
+          cd build/$(head -n build.log)/release/install
+          tar -czvf hydrus-${{ runnner.OS }}.tgz *
+          mv *.tgz $GITHUB_WORKSPACE
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v2.2.1
+        with:
+          name: hydrus-linux-tarball
+          path: $GITHUB_WORKSPACE/hydrus-${{ runnner.OS }}.tgz
+          if-no-files-found: error
   
   build-macos:
     runs-on: macos-latest
@@ -47,7 +56,16 @@ jobs:
       - name: Build Hydrus
         run: |
           cd $GITHUB_WORKSPACE
-          pyoxidizer build --release
+          pyoxidizer build --release | tee build.log
+          cd build/$(head -n build.log)/release/install
+          tar -czvf hydrus-${{ runnner.OS }}.tgz *
+          mv *.tgz $GITHUB_WORKSPACE
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v2.2.1
+        with:
+          name: hydrus-linux-tarball
+          path: $GITHUB_WORKSPACE/hydrus-${{ runnner.OS }}.tgz
+          if-no-files-found: error
 
   build-windows:
     runs-on: windows-latest
