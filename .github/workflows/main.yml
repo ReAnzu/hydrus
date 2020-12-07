@@ -28,13 +28,13 @@ jobs:
           cd $GITHUB_WORKSPACE
           pyoxidizer build --release | tee build.log
           cd build/$(head -n build.log)/release/install
-          tar -czvf hydrus-${{ runnner.OS }}.tgz *
+          tar -czvf hydrus-${{ runner.OS }}.tgz *
           mv *.tgz $GITHUB_WORKSPACE
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v2.2.1
         with:
           name: hydrus-linux-tarball
-          path: $GITHUB_WORKSPACE/hydrus-${{ runnner.OS }}.tgz
+          path: $GITHUB_WORKSPACE/hydrus-${{ runner.OS }}.tgz
           if-no-files-found: error
   
   build-macos:
@@ -58,13 +58,13 @@ jobs:
           cd $GITHUB_WORKSPACE
           pyoxidizer build --release | tee build.log
           cd build/$(head -n build.log)/release/install
-          tar -czvf hydrus-${{ runnner.OS }}.tgz *
+          tar -czvf hydrus-${{ runner.OS }}.tgz *
           mv *.tgz $GITHUB_WORKSPACE
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v2.2.1
         with:
           name: hydrus-linux-tarball
-          path: $GITHUB_WORKSPACE/hydrus-${{ runnner.OS }}.tgz
+          path: $GITHUB_WORKSPACE/hydrus-${{ runner.OS }}.tgz
           if-no-files-found: error
 
   build-windows:
