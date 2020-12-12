@@ -3,7 +3,7 @@ def make_dist():
 
 def make_packaging_policy(dist):
     policy = dist.make_python_packaging_policy()
-    policy.resources_location = "filesystem-relative:lib"
+    policy.resources_location = "filesystem-relative:"
     policy.allow_files = True
     policy.bytecode_optimize_level_zero = True
     
@@ -18,25 +18,25 @@ def make_client(dist, policy):
     python_config = dist.make_python_interpreter_config()
     python_config.filesystem_importer = True
     python_config.sys_frozen = True
-    python_config.run_filename = "client.py"
+    python_config.run_command = "import os; import sys; exec(open(os.path.join(os.path.split(sys.executable)[0], 'client.py')).read())"
+    #python_config.run_filename = "client.py"
     
     client = dist.to_python_executable(
         name="client",
         packaging_policy=policy,
         config=python_config,
     )
-    client.add_python_resources(client.pip_install(["--only-binary=:all:", "-r", "pyoxidizer-download-requirements.txt"]))
-    client.add_python_resources(client.pip_install(["--prefer-binary", "-r", "pyoxidizer-install-requirements.txt"]))
+    client.add_python_resources(client.pip_install(["--prefer-binary", "-r", "requirements.txt"]))
     
-    if "darwin" in BUILD_TARGET_TRIPLE:
-        client.add_python_resources(client.pip_install(["--platform=macosx_10_13_intel", "--only-binary=:all:", "PySide2>=5.15.0"]))
-    elif "windows" in BUILD_TARGET_TRIPLE:
-        client.add_python_resources(client.pip_install(["--platform=none-win_amd64", "--only-binary=:all:", "PySide2>=5.15.0"]))
-    elif "linux" in BUILD_TARGET_TRIPLE:
-        client.add_python_resources(client.pip_install(["--platform=manylinux1_x86_64", "--only-binary=:all:", "PySide2>=5.15.0"]))
-    else:
-        print("valid target not recognized in".format(BUILD_TARGET_TRIPLE))
-        sys.exit(1)
+    #if "darwin" in BUILD_TARGET_TRIPLE:
+    #    client.add_python_resources(client.pip_install(["--platform=macosx_10_13_intel", "--only-binary=:all:", "PySide2>=5.15.0"]))
+    #elif "windows" in BUILD_TARGET_TRIPLE:
+    #    client.add_python_resources(client.pip_install(["--platform=none-win_amd64", "--only-binary=:all:", "PySide2>=5.15.0"]))
+    #elif "linux" in BUILD_TARGET_TRIPLE:
+    #    client.add_python_resources(client.pip_install(["--platform=manylinux1_x86_64", "--only-binary=:all:", "PySide2>=5.15.0"]))
+    #else:
+    #    print("valid target not recognized in".format(BUILD_TARGET_TRIPLE))
+    #    sys.exit(1)
 
     client.add_python_resources(client.read_package_root(
         path=".",
