@@ -11,11 +11,11 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v1.0.1
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v1.0.1
       - name: rust-cargo
         uses: actions-rs/cargo@v1.0.1
         with:
@@ -59,7 +59,7 @@ jobs:
           mv install/* "Hydrus Network.app/Contents/MacOS/"
           rm -rf install
           cd $GITHUB_WORKSPACE
-          temp_dmg=$(mktemp)
+          temp_dmg="$(mktemp).dmg"
           hdiutil create "$temp_dmg" -ov -volname "HydrusNetwork" -fs HFS+ -srcfolder "$GITHUB_WORKSPACE/build/$(head -n 1 triple.txt)/release"
           hdiutil convert "$temp_dmg" -format UDZO -o HydrusNetwork.dmg
       - name: Upload a Build Artifact
