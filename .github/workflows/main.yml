@@ -68,3 +68,4 @@ jobs:
           name: hydrus-dmg
           path: HydrusNetwork.dmg
           if-no-files-found: error
+          retention-days: 90
