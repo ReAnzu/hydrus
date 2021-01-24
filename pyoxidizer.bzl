@@ -3,46 +3,28 @@ def make_dist():
 
 def make_packaging_policy(dist):
     policy = dist.make_python_packaging_policy()
-    policy.resources_location = "filesystem-relative:"
+    policy.set_resource_handling_mode("files")
+    policy.resources_location = "filesystem-relative:lib"
     policy.allow_files = True
     policy.bytecode_optimize_level_zero = True
-    
-    #policy.include_distribution_sources = True
-    #policy.include_distribution_resources = False
-    #policy.include_non_distribution_sources = False
-    #policy.include_test = False
     
     return policy
 
 def make_client(dist, policy):
     python_config = dist.make_python_interpreter_config()
+    python_config.module_search_paths = ["$ORIGIN", "$ORIGIN/lib"]
     python_config.filesystem_importer = True
     python_config.sys_frozen = True
     python_config.run_command = "import os; import sys; exec(open(os.path.join(os.path.split(sys.executable)[0], 'client.py')).read())"
-    #python_config.run_filename = "client.py"
     
     client = dist.to_python_executable(
         name="client",
         packaging_policy=policy,
         config=python_config,
     )
+    
     client.add_python_resources(client.pip_install(["--prefer-binary", "-r", "requirements.txt"]))
-    
-    #if "darwin" in BUILD_TARGET_TRIPLE:
-    #    client.add_python_resources(client.pip_install(["--platform=macosx_10_13_intel", "--only-binary=:all:", "PySide2>=5.15.0"]))
-    #elif "windows" in BUILD_TARGET_TRIPLE:
-    #    client.add_python_resources(client.pip_install(["--platform=none-win_amd64", "--only-binary=:all:", "PySide2>=5.15.0"]))
-    #elif "linux" in BUILD_TARGET_TRIPLE:
-    #    client.add_python_resources(client.pip_install(["--platform=manylinux1_x86_64", "--only-binary=:all:", "PySide2>=5.15.0"]))
-    #else:
-    #    print("valid target not recognized in".format(BUILD_TARGET_TRIPLE))
-    #    sys.exit(1)
 
-    client.add_python_resources(client.read_package_root(
-        path=".",
-        packages=["hydrus"],
-    ))
-    
     return client
 
 def make_embedded_resources(client):
@@ -54,7 +36,9 @@ def make_install(client, resources):
 
     static_resources = glob(["./*.py", "./*.md", "./*txt", "./static/**/*", "./help/**/*"], strip_prefix="{}/".format(CWD))
     files.add_manifest(static_resources)
-#    files.add_manifest(resources)
+     
+    hydrus_source = glob(["./hydrus/**/*.py"], strip_prefix="{}/".format(CWD))
+    files.add_manifest(hydrus_source)
 
     return files
 
