@@ -46,6 +46,7 @@ from hydrus.client.gui.lists import ClientGUIListConstants as CGLC
 from hydrus.client.gui.lists import ClientGUIListCtrl
 from hydrus.client.gui.search import ClientGUIACDropdown
 from hydrus.client.gui.search import ClientGUISearch
+from hydrus.client.importing import ClientImporting
 from hydrus.client.importing import ClientImportGallery
 from hydrus.client.importing import ClientImportLocal
 from hydrus.client.importing import ClientImportOptions
@@ -679,7 +680,7 @@ class ListBoxTagsMediaManagementPanel( ClientGUIListBoxes.ListBoxTagsMedia ):
     
     def _Activate( self, shift_down ) -> bool:
         
-        predicates = [ ClientSearch.Predicate( ClientSearch.PREDICATE_TYPE_TAG, term ) for term in self._selected_terms ]
+        predicates = self._GetPredicatesFromTerms( self._selected_terms )
         
         if len( predicates ) > 0:
             
@@ -898,11 +899,6 @@ class ManagementPanel( QW.QScrollArea ):
         
     
     def Start( self ):
-        
-        pass
-        
-    
-    def PausePlaySearch( self ):
         
         pass
         
@@ -1819,15 +1815,26 @@ class ManagementPanelImporterMultipleGallery( ManagementPanelImporter ):
         
         pretty_source = source
         
+        files_finished = gallery_import.FilesFinished()
         files_paused = gallery_import.FilesPaused()
         
-        if files_paused:
+        if files_finished:
+            
+            pretty_files_paused = HG.client_controller.new_options.GetString( 'stop_character' )
+            
+            sort_files_paused = -1
+            
+        elif files_paused:
             
             pretty_files_paused = HG.client_controller.new_options.GetString( 'pause_character' )
+            
+            sort_files_paused = 0
             
         else:
             
             pretty_files_paused = ''
+            
+            sort_files_paused = 1
             
         
         gallery_finished = gallery_import.GalleryFinished()
@@ -1852,9 +1859,9 @@ class ManagementPanelImporterMultipleGallery( ManagementPanelImporter ):
             sort_gallery_paused = 1
             
         
-        status = gallery_import.GetSimpleStatus()
+        ( status_enum, pretty_status ) = gallery_import.GetSimpleStatus()
         
-        pretty_status = status
+        sort_status = ClientImporting.downloader_enum_sort_lookup[ status_enum ]
         
         file_seed_cache_status = gallery_import.GetFileSeedCache().GetStatus()
         
@@ -1869,7 +1876,7 @@ class ManagementPanelImporterMultipleGallery( ManagementPanelImporter ):
         pretty_added = ClientData.TimestampToPrettyTimeDelta( added, show_seconds = False )
         
         display_tuple = ( pretty_query_text, pretty_source, pretty_files_paused, pretty_gallery_paused, pretty_status, pretty_progress, pretty_added )
-        sort_tuple = ( query_text, pretty_source, files_paused, sort_gallery_paused, status, progress, added )
+        sort_tuple = ( query_text, pretty_source, sort_files_paused, sort_gallery_paused, sort_status, progress, added )
         
         return ( display_tuple, sort_tuple )
         
@@ -2659,17 +2666,12 @@ class ManagementPanelImporterMultipleWatcher( ManagementPanelImporter ):
         
         pretty_added = ClientData.TimestampToPrettyTimeDelta( added, show_seconds = False )
         
-        watcher_status = self._multiple_watcher_import.GetWatcherSimpleStatus( watcher )
+        ( status_enum, pretty_watcher_status ) = self._multiple_watcher_import.GetWatcherSimpleStatus( watcher )
         
-        pretty_watcher_status = watcher_status
-        
-        if watcher_status == '':
-            
-            watcher_status = 'zzz' # to sort _after_ DEAD and other interesting statuses on ascending sort
-            
+        sort_watcher_status = ClientImporting.downloader_enum_sort_lookup[ status_enum ]
         
         display_tuple = ( pretty_subject, pretty_files_paused, pretty_checking_paused, pretty_watcher_status, pretty_progress, pretty_added )
-        sort_tuple = ( subject, files_paused, sort_checking_paused, watcher_status, progress, added )
+        sort_tuple = ( subject, files_paused, sort_checking_paused, sort_watcher_status, progress, added )
         
         return ( display_tuple, sort_tuple )
         
@@ -3820,7 +3822,7 @@ class ManagementPanelPetitions( ManagementPanel ):
         ManagementPanel.__init__( self, parent, page, controller, management_controller )
         
         self._service = self._controller.services_manager.GetService( self._petition_service_key )
-        self._can_ban = self._service.HasPermission( HC.CONTENT_TYPE_ACCOUNTS, HC.PERMISSION_ACTION_OVERRULE )
+        self._can_ban = self._service.HasPermission( HC.CONTENT_TYPE_ACCOUNTS, HC.PERMISSION_ACTION_MODERATE )
         
         service_type = self._service.GetServiceType()
         
@@ -4497,14 +4499,14 @@ class ManagementPanelPetitions( ManagementPanel ):
     
     def EventModifyPetitioner( self ):
         
-        QW.QMessageBox.warning( self, 'Warning', 'modify users does not work yet!' )
+        QW.QMessageBox.critical( self, 'Error', 'this does not work yet!' )
         
         return
         
-        with ClientGUIDialogs.DialogModifyAccounts( self, self._petition_service_key, ( self._current_petition.GetPetitionerAccount(), ) ) as dlg:
-            
-            dlg.exec()
-            
+        #with ClientGUIDialogs.DialogModifyAccounts( self, self._petition_service_key, ( self._current_petition.GetPetitionerAccount(), ) ) as dlg:
+        #    
+        #    dlg.exec()
+        #    
         
     
     def EventRowRightClick( self ):
@@ -4885,14 +4887,6 @@ class ManagementPanelQuery( ManagementPanel ):
         if len( initial_predicates ) > 0 and not file_search_context.IsComplete():
             
             QP.CallAfter( self.RefreshQuery )
-            
-        
-    
-    def PausePlaySearch( self ):
-        
-        if self._search_enabled:
-            
-            self._tag_autocomplete.PausePlaySearch()
             
         
     

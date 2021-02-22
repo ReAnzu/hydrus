@@ -253,7 +253,7 @@ class Controller( object ):
         self._reads[ 'sessions' ] = []
         self._reads[ 'tag_parents' ] = {}
         self._reads[ 'tag_siblings_all_ideals' ] = {}
-        self._reads[ 'in_inbox' ] = False
+        self._reads[ 'inbox_hashes' ] = set()
         
         self._writes = collections.defaultdict( list )
         
@@ -792,6 +792,8 @@ class Controller( object ):
         suite = unittest.TestSuite( suites )
         
         runner = unittest.TextTestRunner( verbosity = 2 )
+        
+        runner.failfast = True
         
         def do_it():
             

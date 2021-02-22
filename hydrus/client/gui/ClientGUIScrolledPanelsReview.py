@@ -1739,13 +1739,11 @@ class ReviewDownloaderImport( ClientGUIScrolledPanels.ReviewPanel ):
         
         menu_items.append( ( 'normal', 'open the easy downloader import help', 'Open the help page for easily importing downloaders in your web browser.', page_func ) )
         
-        page_func = HydrusData.Call( ClientPaths.LaunchURLInWebBrowser, 'https://github.com/CuddleBear92/Hydrus-Presets-and-Scripts/tree/master/Downloaders' )
-        
-        menu_items.append( ( 'normal', 'open the user-run downloader repository', 'Open the github repo where hydrus users gather downloaders.', page_func ) )
-        
         help_button = ClientGUICommon.MenuBitmapButton( self, CC.global_pixmaps().help, menu_items )
         
-        help_hbox = ClientGUICommon.WrapInText( help_button, self, 'help and more downloaders -->', QG.QColor( 0, 0, 255 ) )
+        help_hbox = ClientGUICommon.WrapInText( help_button, self, 'help -->', QG.QColor( 0, 0, 255 ) )
+        
+        self._repo_link = ClientGUICommon.BetterHyperLink( self, 'get user-made downloaders here', 'https://github.com/CuddleBear92/Hydrus-Presets-and-Scripts/tree/master/Downloaders' )
         
         st = ClientGUICommon.BetterStaticText( self, label = 'Drop downloader-encoded pngs onto Lain to import.' )
         
@@ -1765,6 +1763,7 @@ class ReviewDownloaderImport( ClientGUIScrolledPanels.ReviewPanel ):
             
         
         QP.AddToLayout( vbox, help_hbox, CC.FLAGS_ON_RIGHT )
+        QP.AddToLayout( vbox, self._repo_link, CC.FLAGS_CENTER )
         QP.AddToLayout( vbox, st, CC.FLAGS_CENTER )
         QP.AddToLayout( vbox, win, CC.FLAGS_CENTER )
         QP.AddToLayout( vbox, ClientGUICommon.WrapInText( self._select_from_list, self, 'select objects from list' ), CC.FLAGS_EXPAND_SIZER_PERPENDICULAR )
@@ -1780,6 +1779,8 @@ class ReviewDownloaderImport( ClientGUIScrolledPanels.ReviewPanel ):
         
     
     def _ImportPaths( self, paths ):
+        
+        have_shown_load_error = False
         
         gugs = []
         url_classes = []
@@ -1808,7 +1809,26 @@ class ReviewDownloaderImport( ClientGUIScrolledPanels.ReviewPanel ):
             
             try:
                 
-                obj_list = HydrusSerialisable.CreateFromNetworkBytes( payload )
+                obj_list = HydrusSerialisable.CreateFromNetworkBytes( payload, raise_error_on_future_version = True )
+                
+            except HydrusExceptions.SerialisationException as e:
+                
+                if not have_shown_load_error:
+                    
+                    message = str( e )
+                    
+                    if len( paths ) > 1:
+                        
+                        message += os.linesep * 2
+                        message += 'If there are more unloadable objects in this import, they will be skipped silently.'
+                        
+                    
+                    QW.QMessageBox.critical( self, 'Error', message )
+                    
+                    have_shown_load_error = True
+                    
+                
+                continue
                 
             except:
                 

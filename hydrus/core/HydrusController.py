@@ -147,6 +147,11 @@ class HydrusController( object ):
         return []
         
     
+    def _GetWakeDelayPeriod( self ):
+        
+        return 15
+        
+    
     def _InitDB( self ):
         
         raise NotImplementedError()
@@ -199,6 +204,11 @@ class HydrusController( object ):
     def _ReportShutdownDaemonsStatus( self ):
         
         pass
+        
+    
+    def _ShowJustWokeToUser( self ):
+        
+        HydrusData.Print( 'Just woke from sleep.' )
         
     
     def _ShutdownDaemons( self ):
@@ -298,7 +308,7 @@ class HydrusController( object ):
         return job
         
     
-    def CallRepeating( self, initial_delay, period, func, *args, **kwargs ):
+    def CallRepeating( self, initial_delay, period, func, *args, **kwargs ) -> HydrusThreading.RepeatingJob:
         
         job_scheduler = self._GetAppropriateJobScheduler( period )
         
@@ -529,7 +539,7 @@ class HydrusController( object ):
         
         self._daemon_jobs[ 'maintain_db' ] = job
         
-        job = self.CallRepeating( 10.0, 120.0, self.SleepCheck )
+        job = self.CallRepeating( 0.0, 15.0, self.SleepCheck )
         
         self._daemon_jobs[ 'sleep_check' ] = job
         
@@ -754,22 +764,21 @@ class HydrusController( object ):
         
         with self._sleep_lock:
             
-            if HydrusData.TimeHasPassed( self._timestamps[ 'now_awake' ] ):
+            if HydrusData.TimeHasPassed( self._timestamps[ 'last_sleep_check' ] + 60 ): # it has been way too long since this method last fired, so we've prob been asleep
                 
-                last_sleep_check = self._timestamps[ 'last_sleep_check' ]
+                self._just_woke_from_sleep = True
                 
-                if HydrusData.TimeHasPassed( last_sleep_check + 600 ): # it has been way too long since this method last fired, so we've prob been asleep
-                    
-                    self._just_woke_from_sleep = True
-                    
-                    self.ResetIdleTimer() # this will stop the background jobs from kicking in as soon as the grace period is over
-                    
-                    self._timestamps[ 'now_awake' ] = HydrusData.GetNow() + 15 # enough time for ethernet to get back online and all that
-                    
-                else:
-                    
-                    self._just_woke_from_sleep = False
-                    
+                self.ResetIdleTimer() # this will stop the background jobs from kicking in as soon as the grace period is over
+                
+                wake_delay_period = self._GetWakeDelayPeriod()
+                
+                self._timestamps[ 'now_awake' ] = HydrusData.GetNow() + wake_delay_period # enough time for ethernet to get back online and all that
+                
+                self._ShowJustWokeToUser()
+                
+            elif self._just_woke_from_sleep and HydrusData.TimeHasPassed( self._timestamps[ 'now_awake' ] ):
+                
+                self._just_woke_from_sleep = False
                 
             
             self._timestamps[ 'last_sleep_check' ] = HydrusData.GetNow()
@@ -782,6 +791,8 @@ class HydrusController( object ):
             
             self._timestamps[ 'last_sleep_check' ] = HydrusData.GetNow() - 3600
             
+        
+        self.SleepCheck()
         
     
     def SystemBusy( self ):

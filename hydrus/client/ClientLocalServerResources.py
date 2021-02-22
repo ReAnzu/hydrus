@@ -1,4 +1,5 @@
 import collections
+import collections.abc
 import json
 import os
 import time
@@ -495,6 +496,10 @@ class HydrusResourceBooruThumbnail( HydrusResourceBooru ):
         elif mime == HC.APPLICATION_PSD:
             
             path = os.path.join( HC.STATIC_DIR, 'psd.png' )
+            
+        elif mime == HC.APPLICATION_CLIP:
+            
+            path = os.path.join( HC.STATIC_DIR, 'clip.png' )
             
         else:
             
@@ -1064,12 +1069,46 @@ class HydrusResourceClientAPIRestrictedAddTagsAddTags( HydrusResourceClientAPIRe
                         continue
                         
                     
-                    if isinstance( tags[0], str ):
+                    content_action = int( content_action )
+                    
+                    actual_tags = []
+                    
+                    tags_to_reasons = {}
+                    
+                    for tag_item in tags:
                         
-                        tags = HydrusTags.CleanTags( tags )
+                        reason = 'Petitioned from API'
+                        
+                        if isinstance( tag_item, str ):
+                            
+                            tag = tag_item
+                            
+                        elif isinstance( tag_item, collections.abc.Collection ) and len( tag_item ) == 2:
+                            
+                            ( tag, reason ) = tag_item
+                            
+                            if not ( isinstance( tag, str ) and isinstance( reason, str ) ):
+                                
+                                continue
+                                
+                            
+                        else:
+                            
+                            continue
+                            
+                        
+                        actual_tags.append( tag )
+                        tags_to_reasons[ tag ] = reason
                         
                     
-                    content_action = int( content_action )
+                    actual_tags = HydrusTags.CleanTags( actual_tags )
+                    
+                    if len( actual_tags ) == 0:
+                        
+                        continue
+                        
+                    
+                    tags = actual_tags
                     
                     if service.GetServiceType() == HC.LOCAL_TAG:
                         
@@ -1088,16 +1127,7 @@ class HydrusResourceClientAPIRestrictedAddTagsAddTags( HydrusResourceClientAPIRe
                     
                     if content_action == HC.CONTENT_UPDATE_PETITION:
                         
-                        if isinstance( tags[0], str ):
-                            
-                            tags_and_reasons = [ ( tag, 'Petitioned from API' ) for tag in tags ]
-                            
-                        else:
-                            
-                            tags_and_reasons = tags
-                            
-                        
-                        content_updates = [ HydrusData.ContentUpdate( HC.CONTENT_TYPE_MAPPINGS, content_action, ( tag, hashes ), reason = reason ) for ( tag, reason ) in tags_and_reasons ]
+                        content_updates = [ HydrusData.ContentUpdate( HC.CONTENT_TYPE_MAPPINGS, content_action, ( tag, hashes ), reason = tags_to_reasons[ tag ] ) for tag in tags ]
                         
                     else:
                         

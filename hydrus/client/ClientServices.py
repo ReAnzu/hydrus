@@ -867,7 +867,7 @@ class ServiceRestricted( ServiceRemote ):
     
     def _GetErrorWaitPeriod( self ):
         
-        if self._account.HasPermission( HC.CONTENT_TYPE_ACCOUNTS, HC.PERMISSION_ACTION_OVERRULE ):
+        if self._account.HasPermission( HC.CONTENT_TYPE_ACCOUNTS, HC.PERMISSION_ACTION_MODERATE ):
             
             return 900
             
@@ -3021,6 +3021,8 @@ class ServicesManager( object ):
             
             self._SetServices( services )
             
+        
+        self._controller.pub( 'notify_new_services' )
         
     
     def ServiceExists( self, service_key: bytes ):

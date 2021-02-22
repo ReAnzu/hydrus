@@ -972,7 +972,7 @@ class MediaPanel( ClientMedia.ListeningMediaList, QW.QScrollArea ):
         QW.QMessageBox.information( self, 'Information', 'this does not work yet!' )
         
         return
-        
+        '''
         hashes = self._GetSelectedHashes()
         
         if hashes is not None and len( hashes ) > 0:   
@@ -985,7 +985,7 @@ class MediaPanel( ClientMedia.ListeningMediaList, QW.QScrollArea ):
             
             self.setFocus( QC.Qt.OtherFocusReason )
             
-        
+        '''
     
     def _OpenExternally( self ):
         
@@ -2193,6 +2193,8 @@ class MediaPanel( ClientMedia.ListeningMediaList, QW.QScrollArea ):
             
             self._Select( ClientMedia.FileFilter( ClientMedia.FILE_FILTER_TAGS, ( and_or_or, tags ) ) )
             
+            self.setFocus( QC.Qt.OtherFocusReason )
+            
         
     
     def SetDuplicateStatusForAll( self, duplicate_type ):
@@ -3302,9 +3304,9 @@ class MediaPanelThumbnails( MediaPanel ):
             
             file_service_keys = { repository.GetServiceKey() for repository in file_repositories }
             upload_permission_file_service_keys = { repository.GetServiceKey() for repository in file_repositories if repository.HasPermission( HC.CONTENT_TYPE_FILES, HC.PERMISSION_ACTION_CREATE ) }
-            petition_resolve_permission_file_service_keys = { repository.GetServiceKey() for repository in file_repositories if repository.HasPermission( HC.CONTENT_TYPE_FILES, HC.PERMISSION_ACTION_OVERRULE ) }
+            petition_resolve_permission_file_service_keys = { repository.GetServiceKey() for repository in file_repositories if repository.HasPermission( HC.CONTENT_TYPE_FILES, HC.PERMISSION_ACTION_MODERATE ) }
             petition_permission_file_service_keys = { repository.GetServiceKey() for repository in file_repositories if repository.HasPermission( HC.CONTENT_TYPE_FILES, HC.PERMISSION_ACTION_PETITION ) } - petition_resolve_permission_file_service_keys
-            user_manage_permission_file_service_keys = { repository.GetServiceKey() for repository in file_repositories if repository.HasPermission( HC.CONTENT_TYPE_ACCOUNTS, HC.PERMISSION_ACTION_OVERRULE ) }
+            user_manage_permission_file_service_keys = { repository.GetServiceKey() for repository in file_repositories if repository.HasPermission( HC.CONTENT_TYPE_ACCOUNTS, HC.PERMISSION_ACTION_MODERATE ) }
             ipfs_service_keys = { service.GetServiceKey() for service in ipfs_services }
             
             focused_is_ipfs = True in ( service_key in ipfs_service_keys for service_key in self._focused_media.GetLocationsManager().GetCurrentRemote() )
@@ -3942,6 +3944,7 @@ class MediaPanelThumbnails( MediaPanel ):
                         
                     
                     if HG.client_controller.new_options.GetBoolean( 'advanced_mode' ):
+                        
                         ClientGUIMenus.AppendMenuItem( duplicates_edit_action_submenu, 'for ' + HC.duplicate_type_string_lookup[HC.DUPLICATE_ALTERNATE] + ' (advanced!)', 'Edit what happens when you set this status.', self._EditDuplicateActionOptions, HC.DUPLICATE_ALTERNATE )
                         
                     
@@ -3951,18 +3954,6 @@ class MediaPanelThumbnails( MediaPanel ):
                     
                 
                 ClientGUIMenus.AppendMenu( duplicates_menu, duplicates_action_submenu, 'set relationship' )
-                
-            
-            if self._focused_media.HasImages():
-                
-                similar_menu = QW.QMenu( duplicates_menu )
-                
-                ClientGUIMenus.AppendMenuItem( similar_menu, 'exact match', 'Search the database for files that look precisely like those selected.', self._GetSimilarTo, HC.HAMMING_EXACT_MATCH )
-                ClientGUIMenus.AppendMenuItem( similar_menu, 'very similar', 'Search the database for files that look just like those selected.', self._GetSimilarTo, HC.HAMMING_VERY_SIMILAR )
-                ClientGUIMenus.AppendMenuItem( similar_menu, 'similar', 'Search the database for files that look generally like those selected.', self._GetSimilarTo, HC.HAMMING_SIMILAR )
-                ClientGUIMenus.AppendMenuItem( similar_menu, 'speculative', 'Search the database for files that probably look like those selected. This is sometimes useful for symbols with sharp edges or lines.', self._GetSimilarTo, HC.HAMMING_SPECULATIVE )
-                
-                ClientGUIMenus.AppendMenu( duplicates_menu, similar_menu, 'find similar-looking files' )
                 
             
             if len( duplicates_menu.actions() ) == 0:
@@ -3990,8 +3981,22 @@ class MediaPanelThumbnails( MediaPanel ):
             
             open_menu = QW.QMenu( menu )
             
-            ClientGUIMenus.AppendMenuItem( open_menu, 'in external program', 'Launch this file with your OS\'s default program for it.', self._OpenExternally )
             ClientGUIMenus.AppendMenuItem( open_menu, 'in a new page', 'Copy your current selection into a simple new page.', self._ShowSelectionInNewPage )
+            
+            if self._focused_media.HasImages():
+                
+                similar_menu = QW.QMenu( open_menu )
+                
+                ClientGUIMenus.AppendMenuItem( similar_menu, 'exact match', 'Search the database for files that look precisely like those selected.', self._GetSimilarTo, HC.HAMMING_EXACT_MATCH )
+                ClientGUIMenus.AppendMenuItem( similar_menu, 'very similar', 'Search the database for files that look just like those selected.', self._GetSimilarTo, HC.HAMMING_VERY_SIMILAR )
+                ClientGUIMenus.AppendMenuItem( similar_menu, 'similar', 'Search the database for files that look generally like those selected.', self._GetSimilarTo, HC.HAMMING_SIMILAR )
+                ClientGUIMenus.AppendMenuItem( similar_menu, 'speculative', 'Search the database for files that probably look like those selected. This is sometimes useful for symbols with sharp edges or lines.', self._GetSimilarTo, HC.HAMMING_SPECULATIVE )
+                
+                ClientGUIMenus.AppendMenu( open_menu, similar_menu, 'similar-looking files' )
+                
+            
+            ClientGUIMenus.AppendSeparator( open_menu )
+            ClientGUIMenus.AppendMenuItem( open_menu, 'in external program', 'Launch this file with your OS\'s default program for it.', self._OpenExternally )
             ClientGUIMenus.AppendMenuItem( open_menu, 'in web browser', 'Show this file in your OS\'s web browser.', self._OpenFileInWebBrowser )
             
             if focused_is_local:

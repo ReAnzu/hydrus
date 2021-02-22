@@ -71,7 +71,7 @@ def ReadFromCancellableCursor( cursor, largest_group_size, cancelled_hook = None
             break
             
         
-        if NUM_TO_GET < 1024:
+        if NUM_TO_GET < largest_group_size:
             
             NUM_TO_GET *= 2
             
@@ -162,6 +162,8 @@ class HydrusDB( object ):
         self._controller = controller
         self._db_dir = db_dir
         self._db_name = db_name
+        
+        self._modules = []
         
         TemporaryIntegerTableNameCache()
         
@@ -341,11 +343,6 @@ class HydrusDB( object ):
         self._pubsubs = []
         
     
-    def _CleanUpCaches( self ):
-        
-        pass
-        
-    
     def _CloseDBCursor( self ):
         
         TemporaryIntegerTableNameCache.instance().Clear()
@@ -365,6 +362,8 @@ class HydrusDB( object ):
             
             self._db = None
             self._c = None
+            
+            self._UnloadModules()
             
         
     
@@ -558,6 +557,8 @@ class HydrusDB( object ):
             
             self._c = self._db.cursor()
             
+            self._LoadModules()
+            
             if HG.no_db_temp_files:
                 
                 self._c.execute( 'PRAGMA temp_store = 2;' ) # use memory for temp store exclusively
@@ -623,6 +624,11 @@ class HydrusDB( object ):
         
     
     def _InitExternalDatabases( self ):
+        
+        pass
+        
+    
+    def _LoadModules( self ):
         
         pass
         
@@ -811,6 +817,11 @@ class HydrusDB( object ):
         return result is None
         
     
+    def _UnloadModules( self ):
+        
+        pass
+        
+    
     def _UpdateDB( self, version ):
         
         raise NotImplementedError()
@@ -872,6 +883,11 @@ class HydrusDB( object ):
         elif not ( cert_here or key_here ):
             
             HydrusData.Print( 'Generating new cert/key files.' )
+            
+            if not HydrusEncryption.OPENSSL_OK:
+                
+                raise Exception( 'The database was asked for ssl cert and keys to start either the server or the client api in https. The files do not exist yet, so the database wanted to create new ones, but unfortunately PyOpenSSL is not available, so this cannot be done. If you are running from source, please install this module using pip. Or drop in your own client.crt/client.key or server.crt/server.key files in the db directory.' )
+                
             
             HydrusEncryption.GenerateOpenSSLCertAndKeyFile( self._ssl_cert_path, self._ssl_key_path )
             
@@ -949,9 +965,7 @@ class HydrusDB( object ):
                         
                         summary = 'Profiling ' + job.ToString()
                         
-                        HydrusData.ShowText( summary )
-                        
-                        HydrusData.Profile( summary, 'self._ProcessJob( job )', globals(), locals() )
+                        HydrusData.Profile( summary, 'self._ProcessJob( job )', globals(), locals(), show_summary = True )
                         
                     else:
                         
@@ -1008,8 +1022,6 @@ class HydrusDB( object ):
                 self._InitDBCursor()
                 
             
-        
-        self._CleanUpCaches()
         
         self._CloseDBCursor()
         

@@ -13,6 +13,7 @@ from hydrus.core import HydrusGlobals as HG
 from hydrus.core import HydrusTags
 from hydrus.core import HydrusText
 
+from hydrus.client import ClientApplicationCommand as CAC
 from hydrus.client import ClientConstants as CC
 from hydrus.client import ClientData
 from hydrus.client import ClientSearch
@@ -27,6 +28,7 @@ from hydrus.client.gui import ClientGUIShortcuts
 from hydrus.client.gui import ClientGUITopLevelWindowsPanels
 from hydrus.client.gui import QtPorting as QP
 from hydrus.client.gui.lists import ClientGUIListBoxes
+from hydrus.client.gui.lists import ClientGUIListBoxesData
 from hydrus.client.gui.search import ClientGUISearch
 from hydrus.client.metadata import ClientTags
 
@@ -501,23 +503,6 @@ def WriteFetch( win, job_key, results_callable, parsed_autocomplete_text: Client
     
     InsertTagPredicates( matches, display_tag_service_key, parsed_autocomplete_text )
     
-    if expand_parents:
-        
-        expanded_matches = []
-        
-        for match in matches:
-            
-            expanded_matches.append( match )
-            
-            if match.HasParentPredicates():
-                
-                expanded_matches.extend( match.GetParentPredicates() )
-                
-            
-        
-        matches = expanded_matches
-        
-    
     HG.client_controller.CallLaterQtSafe( win, 0.0, results_callable, job_key, parsed_autocomplete_text, results_cache, matches )
     
 class ListBoxTagsAC( ClientGUIListBoxes.ListBoxTagsPredicates ):
@@ -535,7 +520,7 @@ class ListBoxTagsAC( ClientGUIListBoxes.ListBoxTagsPredicates ):
     
     def _Activate( self, shift_down ) -> bool:
         
-        predicates = list( self._selected_terms )
+        predicates = self._GetPredicatesFromTerms( self._selected_terms )
         
         if self._float_mode:
             
@@ -591,16 +576,15 @@ class ListBoxTagsAC( ClientGUIListBoxes.ListBoxTagsPredicates ):
             
             self._Clear()
             
-            for predicate in predicates:
-                
-                self._AppendTerm( predicate )
-                
+            terms = [ self._GenerateTermFromPredicate( predicate ) for predicate in predicates ]
+            
+            self._AppendTerms( terms )
             
             self._DataHasChanged()
             
             if len( predicates ) > 0:
                 
-                hit_index = 0
+                logical_index = 0
                 
                 if len( predicates ) > 1:
                     
@@ -623,13 +607,13 @@ class ListBoxTagsAC( ClientGUIListBoxes.ListBoxTagsPredicates ):
                             continue
                             
                         
-                        hit_index = index
+                        logical_index = index
                         
                         break
                         
                     
                 
-                self._Hit( False, False, hit_index )
+                self._Hit( False, False, logical_index )
                 
             
         
@@ -641,22 +625,23 @@ class ListBoxTagsAC( ClientGUIListBoxes.ListBoxTagsPredicates ):
     
 class ListBoxTagsACRead( ListBoxTagsAC ):
     
-    ors_are_under_construction = True
-    
-    def _GetTextFromTerm( self, term ):
+    def _GenerateTermFromPredicate( self, predicate: ClientSearch.Predicate ):
         
-        predicate = term
+        term = ListBoxTagsAC._GenerateTermFromPredicate( self, predicate )
         
-        return predicate.ToString( render_for_user = True, or_under_construction = self.ors_are_under_construction )
+        if predicate.GetType() == ClientSearch.PREDICATE_TYPE_OR_CONTAINER:
+            
+            term.SetORUnderConstruction( True )
+            
+        
+        return term
         
     
 class ListBoxTagsACWrite( ListBoxTagsAC ):
     
-    def _GetTextFromTerm( self, term ):
+    def __init__( self, *args, render_for_user = False, **kwargs ):
         
-        predicate = term
-        
-        return predicate.ToString( tag_display_type = ClientTags.TAG_DISPLAY_STORAGE )
+        ListBoxTagsAC.__init__( self, *args, render_for_user = render_for_user, **kwargs )
         
     
 # much of this is based on the excellent TexCtrlAutoComplete class by Edward Flick, Michele Petrazzo and Will Sadkin, just with plenty of simplification and integration into hydrus
@@ -671,7 +656,7 @@ class AutoCompleteDropdown( QW.QWidget ):
         
         QW.QWidget.__init__( self, parent )
         
-        self._intercept_key_events = True
+        self._can_intercept_unusual_key_events = True
         
         if self.window() == HG.client_controller.gui:
             
@@ -766,6 +751,8 @@ class AutoCompleteDropdown( QW.QWidget ):
         self._current_fetch_job_key = None
         
         self._schedule_results_refresh_job = None
+        
+        self._my_shortcut_handler = ClientGUIShortcuts.ShortcutsHandler( self, [ 'tags_autocomplete' ], alternate_filter_target = self._text_ctrl )
         
         if self._float_mode:
             
@@ -1005,7 +992,7 @@ class AutoCompleteDropdown( QW.QWidget ):
         
         colour = HG.client_controller.new_options.GetColour( CC.COLOUR_AUTOCOMPLETE_BACKGROUND )
         
-        if not self._intercept_key_events:
+        if not self._can_intercept_unusual_key_events:
             
             colour = ClientGUIFunctions.GetLighterDarkerColour( colour )
             
@@ -1047,25 +1034,11 @@ class AutoCompleteDropdown( QW.QWidget ):
         
         ( modifier, key ) = ClientGUIShortcuts.ConvertKeyEventToSimpleTuple( event )
         
-        if key in ( QC.Qt.Key_Insert, ):
-            
-            self._intercept_key_events = not self._intercept_key_events
-            
-            self._UpdateBackgroundColour()
-            
-        elif key == QC.Qt.Key_Space and event.modifiers() & QC.Qt.ControlModifier:
-            
-            self._ScheduleResultsRefresh( 0.0 )
-            
-        elif self._intercept_key_events:
+        if self._can_intercept_unusual_key_events:
             
             send_input_to_current_list = False
             
             current_results_list = self._dropdown_notebook.currentWidget()
-            
-            current_list_is_empty = len( current_results_list ) == 0
-            
-            input_is_empty = self._text_ctrl.text() == ''
             
             if key in ( ord( 'A' ), ord( 'a' ) ) and modifier == QC.Qt.ControlModifier:
                 
@@ -1082,48 +1055,6 @@ class AutoCompleteDropdown( QW.QWidget ):
                 escape_caught = self._HandleEscape()
                 
                 if not escape_caught:
-                    
-                    send_input_to_current_list = True
-                    
-                
-            elif input_is_empty: # maybe we should be sending a 'move' event to a different place
-                
-                if key in ( QC.Qt.Key_Up, QC.Qt.Key_Down ) and current_list_is_empty:
-                    
-                    if key in ( QC.Qt.Key_Up, ):
-                        
-                        self.selectUp.emit()
-                        
-                    elif key in ( QC.Qt.Key_Down, ):
-                        
-                        self.selectDown.emit()
-                        
-                    
-                elif key in ( QC.Qt.Key_PageDown, QC.Qt.Key_PageUp ) and current_list_is_empty:
-                    
-                    if key in ( QC.Qt.Key_PageUp, ):
-                        
-                        self.showPrevious.emit()
-                        
-                    elif key in ( QC.Qt.Key_PageDown, ):
-                        
-                        self.showNext.emit()
-                        
-                    
-                elif key in ( QC.Qt.Key_Right, QC.Qt.Key_Left ):
-                    
-                    if key in ( QC.Qt.Key_Left, ):
-                        
-                        direction = -1
-                        
-                    elif key in ( QC.Qt.Key_Right, ):
-                        
-                        direction = 1
-                        
-                    
-                    self.MoveNotebookPageFocus( direction = direction )
-                    
-                else:
                     
                     send_input_to_current_list = True
                     
@@ -1286,6 +1217,83 @@ class AutoCompleteDropdown( QW.QWidget ):
             
         
     
+    def ProcessApplicationCommand( self, command: CAC.ApplicationCommand ):
+        
+        command_processed = True
+        
+        data = command.GetData()
+        
+        if command.IsSimpleCommand():
+            
+            action = data
+            
+            if action == CAC.SIMPLE_AUTOCOMPLETE_IME_MODE:
+                
+                self._can_intercept_unusual_key_events = not self._can_intercept_unusual_key_events
+                
+                self._UpdateBackgroundColour()
+                
+            elif self._can_intercept_unusual_key_events:
+                
+                current_results_list = self._dropdown_notebook.currentWidget()
+                
+                current_list_is_empty = len( current_results_list ) == 0
+                
+                input_is_empty = self._text_ctrl.text() == ''
+                
+                everything_is_empty = input_is_empty and current_list_is_empty
+                
+                if action == CAC.SIMPLE_AUTOCOMPLETE_FORCE_FETCH:
+                    
+                    self._ScheduleResultsRefresh( 0.0 )
+                    
+                elif input_is_empty and action in ( CAC.SIMPLE_AUTOCOMPLETE_IF_EMPTY_TAB_LEFT, CAC.SIMPLE_AUTOCOMPLETE_IF_EMPTY_TAB_RIGHT ):
+                    
+                    if action == CAC.SIMPLE_AUTOCOMPLETE_IF_EMPTY_TAB_LEFT:
+                        
+                        direction = -1
+                        
+                    else:
+                        
+                        direction = 1
+                        
+                    
+                    self.MoveNotebookPageFocus( direction = direction )
+                    
+                elif everything_is_empty and action == CAC.SIMPLE_AUTOCOMPLETE_IF_EMPTY_PAGE_LEFT:
+                    
+                    self.selectUp.emit()
+                    
+                elif everything_is_empty and action == CAC.SIMPLE_AUTOCOMPLETE_IF_EMPTY_PAGE_RIGHT:
+                    
+                    self.selectDown.emit()
+                    
+                elif everything_is_empty and action == CAC.SIMPLE_AUTOCOMPLETE_IF_EMPTY_MEDIA_PREVIOUS:
+                    
+                    self.showPrevious.emit()
+                    
+                elif everything_is_empty and action == CAC.SIMPLE_AUTOCOMPLETE_IF_EMPTY_MEDIA_NEXT:
+                    
+                    self.showNext.emit()
+                    
+                else:
+                    
+                    command_processed = False
+                    
+                
+            else:
+                
+                command_processed = False
+                
+            
+        else:
+            
+            command_processed = False
+            
+        
+        return command_processed
+        
+    
     def SetFetchedResults( self, job_key: ClientThreading.JobKey, parsed_autocomplete_text: ClientSearch.ParsedAutocompleteText, results_cache: ClientSearch.PredicateResultsCache, results: list ):
         
         if self._current_fetch_job_key is not None and self._current_fetch_job_key.GetKey() == job_key.GetKey():
@@ -1348,9 +1356,15 @@ class AutoCompleteDropdownTags( AutoCompleteDropdown ):
         #
         
         HG.client_controller.sub( self, 'RefreshFavouriteTags', 'notify_new_favourite_tags' )
+        HG.client_controller.sub( self, 'NotifyNewServices', 'notify_new_services' )
         
     
     def _ChangeFileService( self, file_service_key ):
+        
+        if not HG.client_controller.services_manager.ServiceExists( file_service_key ):
+            
+            file_service_key = CC.COMBINED_LOCAL_FILE_SERVICE_KEY
+            
         
         if file_service_key == CC.COMBINED_FILE_SERVICE_KEY and self._tag_service_key == CC.COMBINED_TAG_SERVICE_KEY:
             
@@ -1369,6 +1383,11 @@ class AutoCompleteDropdownTags( AutoCompleteDropdown ):
         
     
     def _ChangeTagService( self, tag_service_key ):
+        
+        if not HG.client_controller.services_manager.ServiceExists( tag_service_key ):
+            
+            tag_service_key = CC.COMBINED_TAG_SERVICE_KEY
+            
         
         if tag_service_key == CC.COMBINED_TAG_SERVICE_KEY and self._file_service_key == CC.COMBINED_FILE_SERVICE_KEY:
             
@@ -1469,6 +1488,12 @@ class AutoCompleteDropdownTags( AutoCompleteDropdown ):
             
         
         CGC.core().PopupMenu( self._file_repo_button, menu )
+        
+    
+    def NotifyNewServices( self ):
+        
+        self.SetFileService( self._file_service_key )
+        self.SetTagService( self._tag_service_key )
         
     
     def RefreshFavouriteTags( self ):
@@ -2056,6 +2081,38 @@ class AutoCompleteDropdownTagsRead( AutoCompleteDropdownTags ):
         self._search_pause_play.SetOnOff( False )
         
     
+    def ProcessApplicationCommand( self, command: CAC.ApplicationCommand ):
+        
+        command_processed = True
+        
+        data = command.GetData()
+        
+        if self._can_intercept_unusual_key_events and command.IsSimpleCommand():
+            
+            action = data
+            
+            if action == CAC.SIMPLE_SYNCHRONISED_WAIT_SWITCH:
+                
+                self.PausePlaySearch()
+                
+            else:
+                
+                command_processed = False
+                
+            
+        else:
+            
+            command_processed = False
+            
+        
+        if not command_processed:
+            
+            command_processed = AutoCompleteDropdownTags.ProcessApplicationCommand( self, command )
+            
+        
+        return command_processed
+        
+    
     def SetFetchedResults( self, job_key: ClientThreading.JobKey, parsed_autocomplete_text: ClientSearch.ParsedAutocompleteText, results_cache: ClientSearch.PredicateResultsCache, results: list ):
         
         if self._current_fetch_job_key is not None and self._current_fetch_job_key.GetKey() == job_key.GetKey():
@@ -2140,12 +2197,11 @@ class ListBoxTagsActiveSearchPredicates( ClientGUIListBoxes.ListBoxTagsPredicate
         
         if len( initial_predicates ) > 0:
             
-            for predicate in initial_predicates:
-                
-                self._AppendTerm( predicate )
-                
+            terms = [ self._GenerateTermFromPredicate( predicate ) for predicate in initial_predicates ]
             
-            self._SortByText()
+            self._AppendTerms( terms )
+            
+            self._Sort()
             
             self._DataHasChanged()
             
@@ -2155,15 +2211,17 @@ class ListBoxTagsActiveSearchPredicates( ClientGUIListBoxes.ListBoxTagsPredicate
     
     def _Activate( self, shift_down ) -> bool:
         
-        if len( self._selected_terms ) > 0:
+        predicates = self._GetPredicatesFromTerms( self._selected_terms )
+        
+        if len( predicates ) > 0:
             
             if shift_down:
                 
-                self._EditPredicates( set( self._selected_terms ) )
+                self._EditPredicates( set( predicates ) )
                 
             else:
                 
-                self._EnterPredicates( set( self._selected_terms ) )
+                self._EnterPredicates( set( predicates ) )
                 
             
             return True
@@ -2174,7 +2232,7 @@ class ListBoxTagsActiveSearchPredicates( ClientGUIListBoxes.ListBoxTagsPredicate
     
     def _AddEditMenu( self, menu: QW.QMenu ):
         
-        ( editable_predicates, non_editable_predicates ) = ClientGUISearch.GetEditablePredicates( self._selected_terms )
+        ( editable_predicates, non_editable_predicates ) = ClientGUISearch.GetEditablePredicates( self._GetPredicatesFromTerms( self._selected_terms ) )
         
         if len( editable_predicates ) > 0:
             
@@ -2230,19 +2288,17 @@ class ListBoxTagsActiveSearchPredicates( ClientGUIListBoxes.ListBoxTagsPredicate
             return
             
         
-        for predicate in predicates_to_remove:
-            
-            self._RemoveTerm( predicate )
-            
+        terms_to_remove = [ self._GenerateTermFromPredicate( predicate ) for predicate in predicates_to_remove ]
         
-        for predicate in predicates_to_add:
-            
-            self._AppendTerm( predicate )
-            
+        self._RemoveTerms( terms_to_remove )
         
-        self._selected_terms.update( predicates_to_add )
+        terms_to_add = [ self._GenerateTermFromPredicate( predicate ) for predicate in predicates_to_add ]
         
-        self._SortByText()
+        self._AppendTerms( terms_to_add )
+        
+        self._selected_terms.update( terms_to_add )
+        
+        self._Sort()
         
         self._DataHasChanged()
         
@@ -2254,42 +2310,38 @@ class ListBoxTagsActiveSearchPredicates( ClientGUIListBoxes.ListBoxTagsPredicate
             return
             
         
-        predicates_to_be_added = set()
-        predicates_to_be_removed = set()
+        terms_to_be_added = set()
+        terms_to_be_removed = set()
         
         for predicate in predicates:
             
             predicate = predicate.GetCountlessCopy()
             
-            if self._HasPredicate( predicate ):
+            term = self._GenerateTermFromPredicate( predicate )
+            
+            if term in self._terms_to_logical_indices:
                 
                 if permit_remove:
                     
-                    predicates_to_be_removed.add( predicate )
+                    terms_to_be_removed.add( term )
                     
                 
             else:
                 
                 if permit_add:
                     
-                    predicates_to_be_added.add( predicate )
+                    terms_to_be_added.add( term )
                     
-                    predicates_to_be_removed.update( self._GetMutuallyExclusivePredicates( predicate ) )
+                    terms_to_be_removed.update( self._GetMutuallyExclusivePredicates( predicate ) )
                     
                 
             
         
-        for predicate in predicates_to_be_added:
-            
-            self._AppendTerm( predicate )
-            
+        self._AppendTerms( terms_to_be_added )
         
-        for predicate in predicates_to_be_removed:
-            
-            self._RemoveTerm( predicate )
-            
+        self._RemoveTerms( terms_to_be_removed )
         
-        self._SortByText()
+        self._Sort()
         
         self._DataHasChanged()
         
@@ -2302,13 +2354,6 @@ class ListBoxTagsActiveSearchPredicates( ClientGUIListBoxes.ListBoxTagsPredicate
     def _GetCurrentPagePredicates( self ) -> typing.Set[ ClientSearch.Predicate ]:
         
         return self.GetPredicates()
-        
-    
-    def _GetTextFromTerm( self, term ):
-        
-        predicate = term
-        
-        return predicate.ToString( render_for_user = True )
         
     
     def _HasCounts( self ):
@@ -2357,12 +2402,11 @@ class ListBoxTagsActiveSearchPredicates( ClientGUIListBoxes.ListBoxTagsPredicate
         
         self._Clear()
         
-        for predicate in predicates:
-            
-            self._AppendTerm( predicate )
-            
+        terms = [ self._GenerateTermFromPredicate( predicate ) for predicate in predicates ]
         
-        self._SortByText()
+        self._AppendTerms( terms )
+        
+        self._Sort()
         
         self._DataHasChanged()
         

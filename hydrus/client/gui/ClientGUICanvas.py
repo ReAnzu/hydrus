@@ -1,3 +1,4 @@
+import collections
 import typing
 
 from qtpy import QtCore as QC
@@ -372,7 +373,7 @@ class Canvas( QW.QWidget ):
         # once we have catch_mouse full shortcut support for canvases, swap out this out for an option to swallow activating clicks
         ignore_activating_mouse_click = catch_mouse and not self.PREVIEW_WINDOW
         
-        self._my_shortcuts_handler = ClientGUIShortcuts.ShortcutsHandler( self, initial_shortcuts_names = ( 'media', 'media_viewer' ), catch_mouse = catch_mouse, ignore_activating_mouse_click = ignore_activating_mouse_click )
+        self._my_shortcuts_handler = ClientGUIShortcuts.ShortcutsHandler( self, [ 'media', 'media_viewer' ], catch_mouse = catch_mouse, ignore_activating_mouse_click = ignore_activating_mouse_click )
         
         self._click_drag_reporting_filter = MediaContainerDragClickReportingFilter( self )
         
@@ -3643,29 +3644,29 @@ class CanvasMediaListFilterArchiveDelete( CanvasMediaList ):
                 
             elif result == QW.QDialog.Accepted:
                 
-                def process_in_thread( service_keys_and_content_updates ):
-                    
-                    for ( service_key, content_update ) in service_keys_and_content_updates:
-                        
-                        HG.client_controller.WriteSynchronous( 'content_updates', { service_key : [ content_update ] } )
-                        
-                    
-                
                 self._deleted_hashes = [ media.GetHash() for media in self._deleted ]
                 self._kept_hashes = [ media.GetHash() for media in self._kept ]
                 
-                service_keys_and_content_updates = []
+                service_keys_to_content_updates = {}
                 
-                reason = 'Deleted in Archive/Delete filter.'
-                
-                for chunk_of_hashes in HydrusData.SplitListIntoChunks( self._deleted_hashes, 64 ):
+                if len( self._deleted_hashes ) > 0:
                     
-                    service_keys_and_content_updates.append( ( CC.LOCAL_FILE_SERVICE_KEY, HydrusData.ContentUpdate( HC.CONTENT_TYPE_FILES, HC.CONTENT_UPDATE_DELETE, chunk_of_hashes, reason = reason ) ) )
+                    reason = 'Deleted in Archive/Delete filter.'
+                    
+                    service_keys_to_content_updates[ CC.LOCAL_FILE_SERVICE_KEY ] = [ HydrusData.ContentUpdate( HC.CONTENT_TYPE_FILES, HC.CONTENT_UPDATE_DELETE, self._deleted_hashes, reason = reason ) ]
                     
                 
-                service_keys_and_content_updates.append( ( CC.COMBINED_LOCAL_FILE_SERVICE_KEY, HydrusData.ContentUpdate( HC.CONTENT_TYPE_FILES, HC.CONTENT_UPDATE_ARCHIVE, self._kept_hashes ) ) )
+                if len( self._kept_hashes ) > 0:
+                    
+                    service_keys_to_content_updates[ CC.COMBINED_LOCAL_FILE_SERVICE_KEY ] = [ HydrusData.ContentUpdate( HC.CONTENT_TYPE_FILES, HC.CONTENT_UPDATE_ARCHIVE, self._kept_hashes ) ]
+                    
                 
-                HG.client_controller.CallToThread( process_in_thread, service_keys_and_content_updates )
+                # do this in one go to ensure if the user hits F5 real quick, they won't see the files again
+                
+                if len( service_keys_to_content_updates ) > 0:
+                    
+                    HG.client_controller.Write( 'content_updates', service_keys_to_content_updates )
+                    
                 
                 self._kept = set()
                 self._deleted = set()

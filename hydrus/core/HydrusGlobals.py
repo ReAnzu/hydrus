@@ -7,6 +7,8 @@ test_controller = None
 view_shutdown = False
 model_shutdown = False
 
+server_action = 'start'
+
 no_daemons = False
 db_journal_mode = 'WAL'
 no_db_temp_files = False
@@ -28,6 +30,7 @@ callto_report_mode = False
 server_profile_mode = False
 db_report_mode = False
 db_profile_mode = False
+callto_profile_mode = False
 file_report_mode = False
 media_load_report_mode = False
 gui_report_mode = False

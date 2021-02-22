@@ -148,7 +148,7 @@ def ConvertQueryTextToDict( query_text ):
     # so if there are a mix of encoded and non-encoded, we won't touch it here m8
     
     # except these chars, which screw with GET arg syntax when unquoted
-    bad_chars = [ '&', '=', '/', '?', '#' ]
+    bad_chars = [ '&', '=', '/', '?', '#', '+' ]
     
     param_order = []
     
@@ -1285,6 +1285,47 @@ class NetworkDomainManager( HydrusSerialisable.SerialisableBase ):
         self.SetURLClasses( url_classes )
         
     
+    def DissolveParserLink( self, url_class_name, parser_name ):
+        
+        with self._lock:
+            
+            the_url_class = None
+            
+            for url_class in self._url_classes:
+                
+                if url_class.GetName() == url_class_name:
+                    
+                    the_url_class = url_class
+                    
+                    break
+                    
+                
+            
+            the_parser = None
+            
+            for parser in self._parsers:
+                
+                if parser.GetName() == parser_name:
+                    
+                    the_parser = parser
+                    
+                    break
+                    
+                
+            
+            if the_url_class is not None and the_parser is not None:
+                
+                url_class_key = the_url_class.GetClassKey()
+                parser_key = the_parser.GetParserKey()
+                
+                if url_class_key in self._url_class_keys_to_parser_keys and self._url_class_keys_to_parser_keys[ url_class_key ] == parser_key:
+                    
+                    del self._url_class_keys_to_parser_keys[ url_class_key ]
+                    
+                
+            
+        
+    
     def DomainOK( self, url ):
         
         with self._lock:
@@ -2235,36 +2276,17 @@ class NetworkDomainManager( HydrusSerialisable.SerialisableBase ):
     def STATICSortURLClassesDescendingComplexity( url_classes ):
         
         # we sort them in descending complexity so that
-        # post url/manga subpage
-        # is before
-        # post url
+        # site.com/post/123456
+        # comes before
+        # site.com/search?query=blah
         
-        # also, put more 'precise' URL types above more typically permissive, in the order:
-        # file
-        # post
-        # gallery/watchable
-        # sorting in reverse, so higher number means more precise
+        # I used to do gallery first, then post, then file, but it ultimately was unhelpful in some situations and better handled by strict component/parameter matching
         
         def key( u_m ):
             
-            u_t = u_m.GetURLType()
-            
-            if u_t == HC.URL_TYPE_FILE:
-                
-                u_t_precision_value = 2
-                
-            elif u_t == HC.URL_TYPE_POST:
-                
-                u_t_precision_value = 1
-                
-            else:
-                
-                u_t_precision_value = 0
-                
-            
             u_e = u_m.GetExampleURL()
             
-            return ( u_t_precision_value, u_e.count( '/' ), u_e.count( '=' ) )
+            return ( u_e.count( '/' ), u_e.count( '=' ), len( u_e ) )
             
         
         url_classes.sort( key = key, reverse = True )

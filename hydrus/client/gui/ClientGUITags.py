@@ -93,7 +93,7 @@ class EditTagAutocompleteOptionsPanel( ClientGUIScrolledPanels.EditPanel ):
         self._fetch_all_allowed.setToolTip( 'If on, a search for "*" will return all tags. On large tag services, these searches are extremely slow.' )
         
         self._fetch_results_automatically = QW.QCheckBox( self )
-        self._fetch_results_automatically.setToolTip( 'If on, results will load as you type. If off, you will have to hit Ctrl+Space to load results.' )
+        self._fetch_results_automatically.setToolTip( 'If on, results will load as you type. If off, you will have to hit a shortcut (default Ctrl+Space) to load results.' )
         
         self._exact_match_character_threshold = ClientGUICommon.NoneableSpinCtrl( self, none_phrase = 'always autocomplete (only appropriate for small tag services)', min = 1, max = 256, unit = 'characters' )
         self._exact_match_character_threshold.setToolTip( 'When the search text has <= this many characters, autocomplete will not occur and you will only get results that exactly match the input. Increasing this value makes autocomplete snappier but reduces the number of results.' )
@@ -705,20 +705,20 @@ class EditTagFilterPanel( ClientGUIScrolledPanels.EditPanel ):
         
         tag_slice = self._CleanTagSliceInput( tag_slice )
         
-        if tag_slice in self._advanced_blacklist.GetTags():
+        if tag_slice in self._advanced_blacklist.GetTagSlices():
             
-            self._advanced_blacklist.RemoveTags( ( tag_slice, ) )
+            self._advanced_blacklist.RemoveTagSlices( ( tag_slice, ) )
             
         else:
             
-            self._advanced_whitelist.RemoveTags( ( tag_slice, ) )
+            self._advanced_whitelist.RemoveTagSlices( ( tag_slice, ) )
             
             if self._CurrentlyBlocked( tag_slice ):
                 
                 self._ShowRedundantError( ClientTags.ConvertTagSliceToString( tag_slice ) + ' is already blocked by a broader rule!' )
                 
             
-            self._advanced_blacklist.AddTags( ( tag_slice, ) )
+            self._advanced_blacklist.AddTagSlices( ( tag_slice, ) )
             
         
         self._UpdateStatus()
@@ -743,13 +743,13 @@ class EditTagFilterPanel( ClientGUIScrolledPanels.EditPanel ):
         
         tag_slice = self._CleanTagSliceInput( tag_slice )
         
-        if tag_slice in self._advanced_whitelist.GetTags():
+        if tag_slice in self._advanced_whitelist.GetTagSlices():
             
-            self._advanced_whitelist.RemoveTags( ( tag_slice, ) )
+            self._advanced_whitelist.RemoveTagSlices( ( tag_slice, ) )
             
         else:
             
-            self._advanced_blacklist.RemoveTags( ( tag_slice, ) )
+            self._advanced_blacklist.RemoveTagSlices( ( tag_slice, ) )
             
             # if it is still blocked after that, it needs whitelisting explicitly
             
@@ -758,7 +758,7 @@ class EditTagFilterPanel( ClientGUIScrolledPanels.EditPanel ):
                 self._ShowRedundantError( ClientTags.ConvertTagSliceToString( tag_slice ) + ' is already permitted by a broader rule!' )
                 
             
-            self._advanced_whitelist.AddTags( ( tag_slice, ) )
+            self._advanced_whitelist.AddTagSlices( ( tag_slice, ) )
             
         
         self._UpdateStatus()
@@ -781,18 +781,18 @@ class EditTagFilterPanel( ClientGUIScrolledPanels.EditPanel ):
     
     def _AdvancedBlacklistEverything( self ):
         
-        self._advanced_blacklist.SetTags( [] )
+        self._advanced_blacklist.SetTagSlices( [] )
         
-        self._advanced_whitelist.RemoveTags( ( '', ':' ) )
+        self._advanced_whitelist.RemoveTagSlices( ( '', ':' ) )
         
-        self._advanced_blacklist.AddTags( ( '', ':' ) )
+        self._advanced_blacklist.AddTagSlices( ( '', ':' ) )
         
         self._UpdateStatus()
         
     
     def _AdvancedDeleteBlacklist( self ):
         
-        selected_tag_slices = self._advanced_blacklist.GetSelectedTags()
+        selected_tag_slices = self._advanced_blacklist.GetSelectedTagSlices()
         
         if len( selected_tag_slices ) > 0:
             
@@ -800,7 +800,7 @@ class EditTagFilterPanel( ClientGUIScrolledPanels.EditPanel ):
             
             if result == QW.QDialog.Accepted:
                 
-                self._advanced_blacklist.RemoveTags( selected_tag_slices )
+                self._advanced_blacklist.RemoveTagSlices( selected_tag_slices )
                 
             
         
@@ -809,7 +809,7 @@ class EditTagFilterPanel( ClientGUIScrolledPanels.EditPanel ):
     
     def _AdvancedDeleteWhitelist( self ):
         
-        selected_tag_slices = self._advanced_whitelist.GetSelectedTags()
+        selected_tag_slices = self._advanced_whitelist.GetSelectedTagSlices()
         
         if len( selected_tag_slices ) > 0:
             
@@ -817,7 +817,7 @@ class EditTagFilterPanel( ClientGUIScrolledPanels.EditPanel ):
             
             if result == QW.QDialog.Accepted:
                 
-                self._advanced_whitelist.RemoveTags( selected_tag_slices )
+                self._advanced_whitelist.RemoveTagSlices( selected_tag_slices )
                 
             
         
@@ -872,7 +872,7 @@ class EditTagFilterPanel( ClientGUIScrolledPanels.EditPanel ):
             test_slices = { '', tag_slice }
             
         
-        blacklist = set( self._advanced_blacklist.GetTags() )
+        blacklist = set( self._advanced_blacklist.GetTagSlices() )
         
         return not blacklist.isdisjoint( test_slices )
         
@@ -942,8 +942,8 @@ class EditTagFilterPanel( ClientGUIScrolledPanels.EditPanel ):
     
     def _GetWhiteBlacklistsPossible( self ):
         
-        blacklist_tag_slices = self._advanced_blacklist.GetTags()
-        whitelist_tag_slices = self._advanced_whitelist.GetTags()
+        blacklist_tag_slices = self._advanced_blacklist.GetTagSlices()
+        whitelist_tag_slices = self._advanced_whitelist.GetTagSlices()
         
         blacklist_is_only_simples = set( blacklist_tag_slices ).issubset( { '', ':' } )
         
@@ -1025,7 +1025,7 @@ class EditTagFilterPanel( ClientGUIScrolledPanels.EditPanel ):
         
         blacklist_panel = ClientGUICommon.StaticBox( advanced_panel, 'exclude these' )
         
-        self._advanced_blacklist = ClientGUIListBoxes.ListBoxTagsCensorship( blacklist_panel )
+        self._advanced_blacklist = ClientGUIListBoxes.ListBoxTagsFilter( blacklist_panel )
         
         self._advanced_blacklist_input = ClientGUIControls.TextAndPasteCtrl( blacklist_panel, self._AdvancedAddBlacklistMultiple, allow_empty_input = True )
         
@@ -1037,7 +1037,7 @@ class EditTagFilterPanel( ClientGUIScrolledPanels.EditPanel ):
         
         whitelist_panel = ClientGUICommon.StaticBox( advanced_panel, 'except for these' )
         
-        self._advanced_whitelist = ClientGUIListBoxes.ListBoxTagsCensorship( whitelist_panel )
+        self._advanced_whitelist = ClientGUIListBoxes.ListBoxTagsFilter( whitelist_panel )
         
         self._advanced_whitelist_input = ClientGUIControls.TextAndPasteCtrl( whitelist_panel, self._AdvancedAddWhitelistMultiple, allow_empty_input = True )
         
@@ -1104,7 +1104,7 @@ class EditTagFilterPanel( ClientGUIScrolledPanels.EditPanel ):
             self._simple_blacklist_namespace_checkboxes.Append( namespace, namespace + ':' )
             
         
-        self._simple_blacklist = ClientGUIListBoxes.ListBoxTagsCensorship( blacklist_panel, removed_callable = self._SimpleBlacklistRemoved )
+        self._simple_blacklist = ClientGUIListBoxes.ListBoxTagsFilter( blacklist_panel, removed_callable = self._SimpleBlacklistRemoved )
         
         self._simple_blacklist_input = ClientGUIControls.TextAndPasteCtrl( blacklist_panel, self._SimpleAddBlacklistMultiple, allow_empty_input = True )
         
@@ -1161,7 +1161,7 @@ class EditTagFilterPanel( ClientGUIScrolledPanels.EditPanel ):
             self._simple_whitelist_namespace_checkboxes.Append( namespace, namespace + ':' )
             
         
-        self._simple_whitelist = ClientGUIListBoxes.ListBoxTagsCensorship( whitelist_panel, removed_callable = self._SimpleWhitelistRemoved )
+        self._simple_whitelist = ClientGUIListBoxes.ListBoxTagsFilter( whitelist_panel, removed_callable = self._SimpleWhitelistRemoved )
         
         self._simple_whitelist_input = ClientGUIControls.TextAndPasteCtrl( whitelist_panel, self._SimpleAddWhitelistMultiple, allow_empty_input = True )
         
@@ -1293,7 +1293,7 @@ class EditTagFilterPanel( ClientGUIScrolledPanels.EditPanel ):
         
         for tag_slice in tag_slices:
             
-            if tag_slice in ( '', ':' ) and tag_slice in self._simple_whitelist.GetTags():
+            if tag_slice in ( '', ':' ) and tag_slice in self._simple_whitelist.GetTagSlices():
                 
                 self._AdvancedAddBlacklist( tag_slice )
                 
@@ -1346,8 +1346,8 @@ class EditTagFilterPanel( ClientGUIScrolledPanels.EditPanel ):
         
         ( whitelist_possible, blacklist_possible ) = self._GetWhiteBlacklistsPossible()
         
-        whitelist_tag_slices = self._advanced_whitelist.GetTags()
-        blacklist_tag_slices = self._advanced_blacklist.GetTags()
+        whitelist_tag_slices = self._advanced_whitelist.GetTagSlices()
+        blacklist_tag_slices = self._advanced_blacklist.GetTagSlices()
         
         if whitelist_possible:
             
@@ -1375,7 +1375,7 @@ class EditTagFilterPanel( ClientGUIScrolledPanels.EditPanel ):
                 self._simple_whitelist_namespace_checkboxes.setEnabled( True )
                 
             
-            self._simple_whitelist.SetTags( whitelist_tag_slices )
+            self._simple_whitelist.SetTagSlices( whitelist_tag_slices )
             
             for index in range( self._simple_whitelist_global_checkboxes.count() ):
                 
@@ -1400,7 +1400,7 @@ class EditTagFilterPanel( ClientGUIScrolledPanels.EditPanel ):
             self._simple_whitelist_namespace_checkboxes.setEnabled( False )
             self._simple_whitelist_input.setEnabled( False )
             
-            self._simple_whitelist.SetTags( '' )
+            self._simple_whitelist.SetTagSlices( '' )
             
             for index in range( self._simple_whitelist_global_checkboxes.count() ):
                 
@@ -1415,8 +1415,8 @@ class EditTagFilterPanel( ClientGUIScrolledPanels.EditPanel ):
         
         #
         
-        whitelist_tag_slices = self._advanced_whitelist.GetTags()
-        blacklist_tag_slices = self._advanced_blacklist.GetTags()
+        whitelist_tag_slices = self._advanced_whitelist.GetTagSlices()
+        blacklist_tag_slices = self._advanced_blacklist.GetTagSlices()
         
         if blacklist_possible:
             
@@ -1435,7 +1435,7 @@ class EditTagFilterPanel( ClientGUIScrolledPanels.EditPanel ):
                 self._simple_blacklist_namespace_checkboxes.setEnabled( True )
                 
             
-            self._simple_blacklist.SetTags( blacklist_tag_slices )
+            self._simple_blacklist.SetTagSlices( blacklist_tag_slices )
             
             for index in range( self._simple_blacklist_global_checkboxes.count() ):
                 
@@ -1460,7 +1460,7 @@ class EditTagFilterPanel( ClientGUIScrolledPanels.EditPanel ):
             self._simple_blacklist_namespace_checkboxes.setEnabled( False )
             self._simple_blacklist_input.setEnabled( False )
             
-            self._simple_blacklist.SetTags( '' )
+            self._simple_blacklist.SetTagSlices( '' )
             
             for index in range( self._simple_blacklist_global_checkboxes.count() ):
                 
@@ -1475,8 +1475,8 @@ class EditTagFilterPanel( ClientGUIScrolledPanels.EditPanel ):
         
         #
         
-        whitelist_tag_slices = self._advanced_whitelist.GetTags()
-        blacklist_tag_slices = self._advanced_blacklist.GetTags()
+        whitelist_tag_slices = self._advanced_whitelist.GetTagSlices()
+        blacklist_tag_slices = self._advanced_blacklist.GetTagSlices()
         
         if len( blacklist_tag_slices ) == 0:
             
@@ -1666,7 +1666,7 @@ class EditTagFilterPanel( ClientGUIScrolledPanels.EditPanel ):
             
             tag_slice = QP.GetClientData( self._simple_whitelist_global_checkboxes, index )
             
-            if tag_slice in ( '', ':' ) and tag_slice in self._simple_whitelist.GetTags():
+            if tag_slice in ( '', ':' ) and tag_slice in self._simple_whitelist.GetTagSlices():
                 
                 self._AdvancedAddBlacklist( tag_slice )
                 
@@ -1681,12 +1681,12 @@ class EditTagFilterPanel( ClientGUIScrolledPanels.EditPanel ):
         
         tag_filter = ClientTags.TagFilter()
         
-        for tag_slice in self._advanced_blacklist.GetTags():
+        for tag_slice in self._advanced_blacklist.GetTagSlices():
             
             tag_filter.SetRule( tag_slice, CC.FILTER_BLACKLIST )
             
         
-        for tag_slice in self._advanced_whitelist.GetTags():
+        for tag_slice in self._advanced_whitelist.GetTagSlices():
             
             tag_filter.SetRule( tag_slice, CC.FILTER_WHITELIST )
             
@@ -1699,8 +1699,8 @@ class EditTagFilterPanel( ClientGUIScrolledPanels.EditPanel ):
         blacklist_tag_slices = [ tag_slice for ( tag_slice, rule ) in tag_filter.GetTagSlicesToRules().items() if rule == CC.FILTER_BLACKLIST ]
         whitelist_tag_slices = [ tag_slice for ( tag_slice, rule ) in tag_filter.GetTagSlicesToRules().items() if rule == CC.FILTER_WHITELIST ]
         
-        self._advanced_blacklist.SetTags( blacklist_tag_slices )
-        self._advanced_whitelist.SetTags( whitelist_tag_slices )
+        self._advanced_blacklist.SetTagSlices( blacklist_tag_slices )
+        self._advanced_whitelist.SetTagSlices( whitelist_tag_slices )
         
         ( whitelist_possible, blacklist_possible ) = self._GetWhiteBlacklistsPossible()
         
@@ -2052,7 +2052,7 @@ class ManageTagsPanel( ClientGUIScrolledPanels.ManagePanel ):
             
             menu_items.append( ( 'normal', 'migrate tags for these files', 'Migrate the tags for the files used to launch this manage tags panel.', self._MigrateTags ) )
             
-            if not self._i_am_local_tag_service and self._service.HasPermission( HC.CONTENT_TYPE_ACCOUNTS, HC.PERMISSION_ACTION_OVERRULE ):
+            if not self._i_am_local_tag_service and self._service.HasPermission( HC.CONTENT_TYPE_ACCOUNTS, HC.PERMISSION_ACTION_MODERATE ):
                 
                 menu_items.append( ( 'separator', 0, 0, 0 ) )
                 
@@ -2112,7 +2112,7 @@ class ManageTagsPanel( ClientGUIScrolledPanels.ManagePanel ):
             
             tags = HydrusTags.CleanTags( tags )
             
-            if not self._i_am_local_tag_service and self._service.HasPermission( HC.CONTENT_TYPE_MAPPINGS, HC.PERMISSION_ACTION_OVERRULE ):
+            if not self._i_am_local_tag_service and self._service.HasPermission( HC.CONTENT_TYPE_MAPPINGS, HC.PERMISSION_ACTION_MODERATE ):
                 
                 forced_reason = 'admin'
                 
@@ -2465,7 +2465,7 @@ class ManageTagsPanel( ClientGUIScrolledPanels.ManagePanel ):
             QW.QMessageBox.critical( self, 'Error', 'this does not work yet!' )
             
             return
-            
+            '''
             contents = []
             
             tags = self._tags_box.GetSelectedTags()
@@ -2486,7 +2486,7 @@ class ManageTagsPanel( ClientGUIScrolledPanels.ManagePanel ):
                     dlg.exec()
                     
                 
-            
+            '''
         
         def _Paste( self ):
             
@@ -2844,22 +2844,32 @@ class ManageTagParents( ClientGUIScrolledPanels.ManagePanel ):
             
             #
             
-            #
-            
             self._status_st = ClientGUICommon.BetterStaticText( self, 'initialising\u2026' + os.linesep + '.' )
             self._sync_status_st = ClientGUICommon.BetterStaticText( self, '' )
             self._sync_status_st.setWordWrap( True )
             self._count_st = ClientGUICommon.BetterStaticText( self, '' )
             
+            #
+            
+            children_vbox = QP.VBoxLayout()
+            
+            QP.AddToLayout( children_vbox, ClientGUICommon.BetterStaticText( self, label = 'set children' ), CC.FLAGS_CENTER )
+            QP.AddToLayout( children_vbox, self._children, CC.FLAGS_EXPAND_BOTH_WAYS )
+            
+            parents_vbox = QP.VBoxLayout()
+            
+            QP.AddToLayout( parents_vbox, ClientGUICommon.BetterStaticText( self, label = 'set parents' ), CC.FLAGS_CENTER )
+            QP.AddToLayout( parents_vbox, self._parents, CC.FLAGS_EXPAND_BOTH_WAYS )
+            
             tags_box = QP.HBoxLayout()
             
-            QP.AddToLayout( tags_box, self._children, CC.FLAGS_EXPAND_BOTH_WAYS )
-            QP.AddToLayout( tags_box, self._parents, CC.FLAGS_EXPAND_BOTH_WAYS )
+            QP.AddToLayout( tags_box, children_vbox, CC.FLAGS_EXPAND_BOTH_WAYS )
+            QP.AddToLayout( tags_box, parents_vbox, CC.FLAGS_EXPAND_BOTH_WAYS )
             
             input_box = QP.HBoxLayout()
             
-            QP.AddToLayout( input_box, self._child_input )
-            QP.AddToLayout( input_box, self._parent_input )
+            QP.AddToLayout( input_box, self._child_input, CC.FLAGS_EXPAND_BOTH_WAYS )
+            QP.AddToLayout( input_box, self._parent_input, CC.FLAGS_EXPAND_BOTH_WAYS )
             
             vbox = QP.VBoxLayout()
             
@@ -2870,7 +2880,7 @@ class ManageTagParents( ClientGUIScrolledPanels.ManagePanel ):
             QP.AddToLayout( vbox, listctrl_panel, CC.FLAGS_EXPAND_BOTH_WAYS )
             QP.AddToLayout( vbox, self._add, CC.FLAGS_ON_RIGHT )
             QP.AddToLayout( vbox, tags_box, CC.FLAGS_EXPAND_SIZER_BOTH_WAYS )
-            QP.AddToLayout( vbox, input_box )
+            QP.AddToLayout( vbox, input_box, CC.FLAGS_EXPAND_SIZER_PERPENDICULAR )
             
             self.setLayout( vbox )
             
@@ -2930,7 +2940,7 @@ class ManageTagParents( ClientGUIScrolledPanels.ManagePanel ):
                 
                 if not self._i_am_local_tag_service:
                     
-                    if self._service.HasPermission( HC.CONTENT_TYPE_TAG_PARENTS, HC.PERMISSION_ACTION_OVERRULE ):
+                    if self._service.HasPermission( HC.CONTENT_TYPE_TAG_PARENTS, HC.PERMISSION_ACTION_MODERATE ):
                         
                         reason = 'admin'
                         
@@ -3008,7 +3018,7 @@ class ManageTagParents( ClientGUIScrolledPanels.ManagePanel ):
                         
                         if result == QW.QDialog.Accepted:
                             
-                            if self._service.HasPermission( HC.CONTENT_TYPE_TAG_PARENTS, HC.PERMISSION_ACTION_OVERRULE ):
+                            if self._service.HasPermission( HC.CONTENT_TYPE_TAG_PARENTS, HC.PERMISSION_ACTION_MODERATE ):
                                 
                                 reason = 'admin'
                                 
@@ -3775,15 +3785,21 @@ class ManageTagSiblings( ClientGUIScrolledPanels.ManagePanel ):
             self._sync_status_st.setWordWrap( True )
             self._count_st = ClientGUICommon.BetterStaticText( self, '' )
             
+            old_sibling_box = QP.VBoxLayout()
+            
+            QP.AddToLayout( old_sibling_box, ClientGUICommon.BetterStaticText( self, label = 'set tags to be replaced' ), CC.FLAGS_CENTER )
+            QP.AddToLayout( old_sibling_box, self._old_siblings, CC.FLAGS_EXPAND_BOTH_WAYS )
+            
             new_sibling_box = QP.VBoxLayout()
             
+            QP.AddToLayout( new_sibling_box, ClientGUICommon.BetterStaticText( self, label = 'set new ideal tag' ), CC.FLAGS_CENTER )
             new_sibling_box.addStretch( 1 )
             QP.AddToLayout( new_sibling_box, self._new_sibling, CC.FLAGS_EXPAND_PERPENDICULAR )
             new_sibling_box.addStretch( 1 )
             
             text_box = QP.HBoxLayout()
             
-            QP.AddToLayout( text_box, self._old_siblings, CC.FLAGS_EXPAND_BOTH_WAYS )
+            QP.AddToLayout( text_box, old_sibling_box, CC.FLAGS_EXPAND_SIZER_BOTH_WAYS )
             QP.AddToLayout( text_box, new_sibling_box, CC.FLAGS_EXPAND_SIZER_BOTH_WAYS )
             
             input_box = QP.HBoxLayout()
@@ -3800,7 +3816,7 @@ class ManageTagSiblings( ClientGUIScrolledPanels.ManagePanel ):
             QP.AddToLayout( vbox, listctrl_panel, CC.FLAGS_EXPAND_BOTH_WAYS )
             QP.AddToLayout( vbox, self._add, CC.FLAGS_ON_RIGHT )
             QP.AddToLayout( vbox, text_box, CC.FLAGS_EXPAND_SIZER_BOTH_WAYS )
-            QP.AddToLayout( vbox, input_box )
+            QP.AddToLayout( vbox, input_box, CC.FLAGS_EXPAND_SIZER_PERPENDICULAR )
             
             self.setLayout( vbox )
             
@@ -3864,7 +3880,7 @@ class ManageTagSiblings( ClientGUIScrolledPanels.ManagePanel ):
                         
                         reason = default_reason
                         
-                    elif self._service.HasPermission( HC.CONTENT_TYPE_TAG_SIBLINGS, HC.PERMISSION_ACTION_OVERRULE ):
+                    elif self._service.HasPermission( HC.CONTENT_TYPE_TAG_SIBLINGS, HC.PERMISSION_ACTION_MODERATE ):
                         
                         reason = 'admin'
                         
@@ -3922,7 +3938,7 @@ class ManageTagSiblings( ClientGUIScrolledPanels.ManagePanel ):
                             
                             reason = default_reason
                             
-                        elif self._service.HasPermission( HC.CONTENT_TYPE_TAG_SIBLINGS, HC.PERMISSION_ACTION_OVERRULE ):
+                        elif self._service.HasPermission( HC.CONTENT_TYPE_TAG_SIBLINGS, HC.PERMISSION_ACTION_MODERATE ):
                             
                             reason = 'admin'
                             

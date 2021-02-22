@@ -109,7 +109,7 @@ class DialogPageChooser( ClientGUIDialogs.Dialog ):
         
         self._services = HG.client_controller.services_manager.GetServices()
         
-        repository_petition_permissions = [ ( content_type, HC.PERMISSION_ACTION_OVERRULE ) for content_type in HC.REPOSITORY_CONTENT_TYPES ]
+        repository_petition_permissions = [ ( content_type, HC.PERMISSION_ACTION_MODERATE ) for content_type in HC.REPOSITORY_CONTENT_TYPES ]
         
         self._petition_service_keys = [ service.GetServiceKey() for service in self._services if service.GetServiceType() in HC.REPOSITORIES and True in ( service.HasPermission( content_type, action ) for ( content_type, action ) in repository_petition_permissions ) ]
         
@@ -845,11 +845,6 @@ class Page( QW.QSplitter ):
             
             QP.CallAfter( QP.Unsplit, self._search_preview_split, self._preview_panel )
             
-        
-    
-    def PausePlaySearch( self ):
-        
-        self._management_panel.PausePlaySearch()
         
     
     def _StartInitialMediaResultsLoad( self ):

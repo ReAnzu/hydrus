@@ -26,7 +26,6 @@ from hydrus.core import HydrusVideoHandling
 from hydrus.client import ClientAPI
 from hydrus.client import ClientCaches
 from hydrus.client import ClientConstants as CC
-from hydrus.client import ClientDB
 from hydrus.client import ClientDaemons
 from hydrus.client import ClientDefaults
 from hydrus.client import ClientDownloading
@@ -36,6 +35,7 @@ from hydrus.client import ClientOptions
 from hydrus.client import ClientSearch
 from hydrus.client import ClientServices
 from hydrus.client import ClientThreading
+from hydrus.client.db import ClientDB
 from hydrus.client.gui import ClientGUI
 from hydrus.client.gui import ClientGUIDialogs
 from hydrus.client.gui import ClientGUIScrolledPanelsManagement
@@ -121,16 +121,36 @@ class App( QW.QApplication ):
         
         self.pubsub_catcher = PubSubEventCatcher( self, self._pubsub )
         
-        self.aboutToQuit.connect( self.EventEndSession )
+        self.aboutToQuit.connect( self.EventAboutToQuit )
         
     
-    def EventEndSession( self ):
+    def EventAboutToQuit( self ):
         
         # If a user log-off causes the OS to call the Qt Application's quit/exit func, we still want to save and close nicely
+        # once this lad is done, we are OUT of the mainloop, so if this is called and we are actually waiting on THREADExitEverything, let's wait a bit more
+        
+        # on Windows, the logoff routine kills the process once all top level windows are dead, so we have no chance to do post-app work lmaooooooooo
+        # since splash screen may not appear in some cases, I now keep main gui alive but hidden until the quit call. it is never deleteLater'd
+        
+        # this is also called explicitly right at the end of the program. I set setQuitonLastWindowClosed False and then call quit explicitly, so it needs to be idempotent on the exit calls
         
         if HG.client_controller is not None:
             
-            if not HG.client_controller.ProgramIsShuttingDown():
+            if HG.client_controller.ProgramIsShuttingDown():
+                
+                screw_it_time = HydrusData.GetNow() + 30
+                
+                while not HG.client_controller.ProgramIsShutDown():
+                    
+                    time.sleep( 0.5 )
+                    
+                    if HydrusData.TimeHasPassed( screw_it_time ):
+                        
+                        return
+                        
+                    
+                
+            else:
                 
                 HG.client_controller.SetDoingFastExit( True )
                 
@@ -148,6 +168,7 @@ class Controller( HydrusController.HydrusController ):
         self._qt_app_running = False
         self._is_booted = False
         self._program_is_shutting_down = False
+        self._program_is_shut_down = False
         self._restore_backup_path = None
         
         self._splash = None
@@ -232,6 +253,11 @@ class Controller( HydrusController.HydrusController ):
         return self.services_manager.GetServices( ( HC.LOCAL_BOORU, HC.CLIENT_API_SERVICE ) )
         
     
+    def _GetWakeDelayPeriod( self ):
+        
+        return self.new_options.GetInteger( 'wake_delay_period' )
+        
+    
     def _PublishShutdownSubtext( self, text ):
         
         self.frame_splash_status.SetSubtext( text )
@@ -260,6 +286,53 @@ class Controller( HydrusController.HydrusController ):
         
         self._doing_fast_exit = True
         
+    
+    def _ShowJustWokeToUser( self ):
+        
+        def do_it( job_key: ClientThreading.JobKey ):
+            
+            while not HG.view_shutdown:
+                
+                with self._sleep_lock:
+                    
+                    if job_key.IsCancelled():
+                        
+                        self._timestamps[ 'now_awake' ] = HydrusData.GetNow()
+                        
+                        job_key.SetVariable( 'popup_text_1', 'enabling I/O now' )
+                        
+                        job_key.Delete()
+                        
+                        return
+                        
+                    
+                    wake_time = self._timestamps[ 'now_awake' ]
+                    
+                
+                if HydrusData.TimeHasPassed( wake_time ):
+                    
+                    job_key.Delete()
+                    
+                    return
+                    
+                else:
+                    
+                    job_key.SetVariable( 'popup_text_1', 'enabling I/O {}'.format( HydrusData.TimestampToPrettyTimeDelta( wake_time ) ) )
+                    
+                
+                time.sleep( 0.5 )
+                
+            
+        
+        job_key = ClientThreading.JobKey( cancellable = True )
+        
+        job_key.SetVariable( 'popup_title', 'just woke up from sleep' )
+        
+        self.pub( 'message', job_key )
+        
+        self.CallToThread( do_it, job_key )
+        
+    
     
     def _ShutdownManagers( self ):
         
@@ -681,7 +754,7 @@ class Controller( HydrusController.HydrusController ):
             
             if self.gui is not None and QP.isValid( self.gui ):
                 
-                self.gui.SaveAndClose()
+                self.gui.SaveAndHide()
                 
             
         except Exception:
@@ -1262,6 +1335,11 @@ class Controller( HydrusController.HydrusController ):
     def PrepStringForDisplay( self, text ):
         
         return text.lower()
+        
+    
+    def ProgramIsShutDown( self ):
+        
+        return self._program_is_shut_down
         
     
     def ProgramIsShuttingDown( self ):
@@ -1944,6 +2022,8 @@ class Controller( HydrusController.HydrusController ):
             QW.QApplication.instance().setProperty( 'exit_complete', True )
             
             self._DestroySplash()
+            
+            self._program_is_shut_down = True
             
             QP.CallAfter( QW.QApplication.quit )
             

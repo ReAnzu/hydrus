@@ -528,7 +528,7 @@ class GlobalPixmaps( object ):
         self.copy = QG.QPixmap( os.path.join( HC.STATIC_DIR, 'copy.png' ) )
         self.paste = QG.QPixmap( os.path.join( HC.STATIC_DIR, 'paste.png' ) )
         
-        self.eight_kun = QG.QPixmap( os.path.join( HC.STATIC_DIR, '8kun.png' ) )
+        self.eight_chan = QG.QPixmap( os.path.join( HC.STATIC_DIR, '8chan.png' ) )
         self.twitter = QG.QPixmap( os.path.join( HC.STATIC_DIR, 'twitter.png' ) )
         self.tumblr = QG.QPixmap( os.path.join( HC.STATIC_DIR, 'tumblr.png' ) )
         self.discord = QG.QPixmap( os.path.join( HC.STATIC_DIR, 'discord.png' ) )
@@ -539,6 +539,7 @@ class GlobalPixmaps( object ):
         self.previous = QG.QPixmap( os.path.join( HC.STATIC_DIR, 'previous.png' ) )
         self.next_bmp = QG.QPixmap( os.path.join( HC.STATIC_DIR, 'next.png' ) )
         self.last = QG.QPixmap( os.path.join( HC.STATIC_DIR, 'last.png' ) )
+        self.pair = QG.QPixmap( os.path.join( HC.STATIC_DIR, 'pair.png' ) )
         
 
 global_pixmaps = GlobalPixmaps.instance

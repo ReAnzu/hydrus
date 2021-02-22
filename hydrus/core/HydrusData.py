@@ -402,7 +402,7 @@ def ConvertTimestampToPrettyTime( timestamp, in_utc = False, include_24h_time = 
         return 'unparseable time {}'.format( timestamp )
         
     
-def TimestampToPrettyTimeDelta( timestamp, just_now_string = 'now', just_now_threshold = 3, show_seconds = True ):
+def TimestampToPrettyTimeDelta( timestamp, just_now_string = 'now', just_now_threshold = 3, show_seconds = True, no_prefix = False ):
     
     if timestamp is None:
         
@@ -431,7 +431,14 @@ def TimestampToPrettyTimeDelta( timestamp, just_now_string = 'now', just_now_thr
             
         else:
             
-            return 'in ' + time_delta_string
+            if no_prefix:
+                
+                return time_delta_string
+                
+            else:
+                
+                return 'in ' + time_delta_string
+                
             
         
     except:
@@ -1129,7 +1136,7 @@ def PrintException( e, do_wait = True ):
     
 ShowException = PrintException
 
-def Profile( summary, code, g, l, min_duration_ms = 20 ):
+def Profile( summary, code, g, l, min_duration_ms = 20, show_summary = False ):
     
     profile = cProfile.Profile()
     
@@ -1165,6 +1172,11 @@ def Profile( summary, code, g, l, min_duration_ms = 20 ):
         output.seek( 0 )
         
         details = output.read()
+        
+        if show_summary:
+            
+            ShowText( summary )
+            
         
     else:
         
